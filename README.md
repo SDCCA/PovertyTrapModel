@@ -1,3 +1,12 @@
+# Attention:
+There is an updated version of FinalModel.py under Paper_FinalCodes which produces output csv files as of 28 March 2023. 
+I tried to get the notebook version running, too. After addressing the errors, it has been running for three hours--so not very promising.
+There was no original pipfile available; I have plopped in my requirements.txt in case it helps anyone.
+-Victoria
+
+
+
+
 # GraduationResearchProject
 Modeling Poverty Alleviation Pathways Using Resilience Thinking 
 
