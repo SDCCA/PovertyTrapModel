@@ -5,15 +5,24 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from tqdm import tqdm_notebook as tqdm
-import seaborn as sns
+from tqdm.notebook import tqdm #this was altered to accomodate new requirementsimport seaborn as sns
 import networkx as nx
 import os, sys
 from itertools import product
 import math
 import statistics
 import cmath
+'''VMG notes: 
+- I have not thought about why link_deletion varies from the notebook version
 
+- Due to version differences, there are now problems with random choice 
+(see https://github.com/python/cpython/issues/100805)
+because of this, I have changed all instances of random.choice(self.model.nodes) and random.choice(self.nodes)
+to random.choice(list(self.model.nodes)) and random.choice(list(self.nodes)), respectively.
+There should be a better way, but until the network mechanisms have been finalized, 
+I think this will serve as a sufficient patch.
+
+-The progress bar is not functioning, perhaps because of my tqdm import edit.'''
 
 #0<gamma_L<gamma_H<1
 gamma_L = 0.3
@@ -71,7 +80,7 @@ def isocline(agent):
         return con_cond   
         
         
- class MoneyAgent(Agent):
+class MoneyAgent(Agent):
     
     def __init__(self, unique_id, model):
         
@@ -244,12 +253,12 @@ def isocline(agent):
     def LocalAttachment_v1(self): 
         b = self.model.b
         a = self.model.a
-        node1 = random.choice(self.model.nodes)
-        node2 = random.choice(self.model.nodes)
+        node1 = random.choice(list(self.model.nodes))
+        node2 = random.choice(list(self.model.nodes))
         count = 0 #to avoid an infinite loop when all agents have already made links with each other
         while(self.model.G.has_edge(node1,node2)==True and count <5):
-            node2 = random.choice(self.model.nodes)
-            node1 = random.choice(self.model.nodes)
+            node2 = random.choice(list(self.model.nodes))
+            node1 = random.choice(list(self.model.nodes))
             count +=1
         for agent in self.model.agents:
             if(agent.unique_id == node1):
@@ -324,11 +333,11 @@ def isocline(agent):
     def Link_Deletion(self):
         #print('Deletion')
         if(random.random()>p_ld):
-            node1 = random.choice(self.model.nodes)
-            node2 = random.choice(self.model.nodes)
+            node1 = random.choice(list(self.model.nodes))
+            node2 = random.choice(list(self.model.nodes))
             count = 0
             while(self.model.G.has_edge(node1,node2)==False and count<5):
-                node2 = random.choice(self.model.nodes)
+                node2 = random.choice(list(self.model.nodes))
                 count +=1
             if(count !=5):
                 self.model.G.remove_edge(node1,node2)
@@ -345,7 +354,7 @@ def isocline(agent):
         
         
         
-    class BoltzmannWealthModelNetwork(Model):
+class BoltzmannWealthModelNetwork(Model):
     """A model with some number of agents."""
 
     def __init__(self,b, a,N=500): #N- number of agents
@@ -375,11 +384,11 @@ def isocline(agent):
         if(random.random()>p_ga):
             #print("Global Attachment no: {}".format(self.count))
             self.count_GA+=1
-            node1 = random.choice(self.nodes)
-            node2 = random.choice(self.nodes)
+            node1 = random.choice(list(self.nodes))
+            node2 = random.choice(list(self.nodes))
             while(self.G.has_edge(node1,node2)==True):
-                node2 = random.choice(self.nodes)
-                node1 = random.choice(self.nodes)
+                node2 = random.choice(list(self.nodes))
+                node1 = random.choice(list(self.nodes))
             #adding the edge node1-node2
             #first: find the class object corresponding to the node
             for agent in self.agents:
@@ -423,3 +432,4 @@ agent_df = model.datacollector.get_agent_vars_dataframe()
 agent_df.reset_index(level=1, inplace = True)
 agent_df.to_csv("V2_{}Agents_{}Steps.csv".format(N,steps))
 model_df.to_csv("V2_Model_{}Agents_{}Steps.csv".format(N,steps))
+
