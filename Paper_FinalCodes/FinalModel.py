@@ -5,7 +5,8 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from tqdm.notebook import tqdm #this was altered to accomodate new requirementsimport seaborn as sns
+from tqdm.notebook import tqdm #this was altered to accomodate new requirements
+import seaborn as sns
 import networkx as nx
 import os, sys
 from itertools import product
