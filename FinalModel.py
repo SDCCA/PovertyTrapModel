@@ -23,13 +23,17 @@ to random.choice(list(self.model.nodes)) and random.choice(list(self.nodes)), re
 There should be a better way, but until the network mechanisms have been finalized, 
 I think this will serve as a sufficient patch.
 
--The progress bar is not functioning, perhaps because of my tqdm import edit.'''
+-The progress bar is not functioning, perhaps because of my tqdm import edit.
+
+-Sigma, risk averseness for the isoelastic utility function, is now heterogeneous.
+'''
+
 
 #0<gamma_L<gamma_H<1
 gamma_L = 0.3
 gamma_H = 0.45
 fixed_cost = 0.45
-sigma = 1.5
+#sigma = 1.5
 beta = 0.95
 delta = 0.08
 theta = 0.8
@@ -65,7 +69,7 @@ def calculating_k_c(agent, gamma, E_t, time):
         e1 = pow(beta, time - 1)*E_t*theta*(agent.alpha*gamma*a2 + (1-delta)) 
 
         #(beta*E_t*theta*(alpha*gamma_H*a2 + (1-delta)))^(1/sigma)
-        e2 = pow(e1, (1/sigma))
+        e2 = pow(e1, (1/agent.sigma))
         
         #c*sigmathroot(beta*E_t*theta*(alpha*gamma_H*a2 + (1-delta)))^(1/sigma)
         con = agent.consum * e2
@@ -91,6 +95,7 @@ class MoneyAgent(Agent):
         while (self.lamda == 1):
             self.lamda = round(random.uniform(0.1,1),1)    
         self.alpha = alpha[unique_id]#human capital 
+        self.sigma = round(random.uniform(.9,1.9),1)#risk averseness
         self.tec = 'NA'
         self.income = 0 #initialising income
         self.income_generation() #finding income corresponding to the human capital,
