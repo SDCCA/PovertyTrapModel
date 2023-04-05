@@ -1,19 +1,3 @@
-# Attention:
-Here is an updated version of FinalModel.py (previously under Paper_FinalCodes) which produces output csv files as of 28 March 2023. 
-The notebook experiments have been similarly edited and are running, too.
-There was no original pipfile available; I have plopped in my requirements.txt in case it helps anyone.
--Victoria
+# Summary of changes to Main branch:
 
-
-
-
-# GraduationResearchProject
-Modeling Poverty Alleviation Pathways Using Resilience Thinking 
-
-The poverty trap is the state of an individual or community to remain in poverty irrespective of providing resources aimed at poverty alleviation. Conventional poverty trap models viewed poverty as a one-dimensional problem owing to a lack of income. Several intertwined factors combine to increase the susceptibility of consistent poverty. The combination of factors is context-dependent and varies across communities and households. A lack of understanding of the contributing factors could be blamed for the failure of many conventional poverty alleviation strategies.
-
-
-Moving beyond the conventional one-dimensional poverty trap models and incorporating the multiple factors that lead to the poverty trap, results in a multi-dimensional poverty trap model. These factors are unique to each scenario. Hence, a general model based on the capitals that constitute the Community Capital Framework will be modeled in this project. 
-
-
-By applying the concepts of resilience thinking to this model, the project intends to identify the causal mechanisms characterizing and consolidating the poverty trap in an urban setting. This will help in developing effective poverty alleviation strategies that are best suited under various circumstances.
+April 5, 2023 - Made sigma (risk averseness) heterogeneous among agents between an arbitrary range from 0.9 to 1.9; the original value was 1.5.
