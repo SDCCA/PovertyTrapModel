@@ -1,0 +1,9 @@
+name: ptm
+channels:
+  - conda-forge
+dependencies:
+  - python>=3
+  - matplotlib
+  - mesa
+  - seaborn
+  - jupyter
