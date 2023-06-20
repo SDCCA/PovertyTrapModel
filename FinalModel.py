@@ -175,6 +175,7 @@ class MoneyAgent(Agent):
                     con = c_cond - random.random()
                     while(con>self.k or con < 0):
                         con = c_cond - random.random()
+#                    con = c_cond - random.uniform( max( c_cond - self.k, 0 ), min( c_cond, 1 ))
                     self.consum = con
             else:
                 #print("4th quadrant")
@@ -184,6 +185,7 @@ class MoneyAgent(Agent):
                     con = c_cond - random.random()
                     while(con>self.k or con < 0):
                         con = c_cond - random.random()
+#                    con = c_cond - random.uniform( max( c_cond - self.k, 0 ), min( c_cond, 1 ))
                     self.consum = con
 
         if(self.tec == 'L'):
@@ -202,6 +204,7 @@ class MoneyAgent(Agent):
                     con = c_cond - random.random()
                     while(con>self.k or con < 0):
                         con = c_cond - random.random()
+#                    con = c_cond - random.uniform( max( c_cond - self.k, 0 ), min( c_cond, 1 ))
                     self.consum = con
             else:
                 #print("4th quadrant")
@@ -211,6 +214,7 @@ class MoneyAgent(Agent):
                     con = c_cond - random.random()
                     while(con>self.k or con<0):
                         con = c_cond - random.random()
+#                    con = c_cond - random.uniform( max( c_cond - self.k, 0 ), min( c_cond, 1 ))
                     self.consum = con  
         #print("Old C:", consum)   
         #print("New Consum :", self.consum)
@@ -424,8 +428,8 @@ class BoltzmannWealthModelNetwork(Model):
             self.gini = self.compute_gini()
             
             
-N = 5
-steps = 5
+N = 50
+steps = 125
 b = 35
 a = 0.69
 alpha = np.random.normal(loc = 1.08, scale = 0.074, size = N) 
