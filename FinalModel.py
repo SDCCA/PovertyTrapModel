@@ -227,7 +227,7 @@ class MoneyAgent(Agent):
     
      #function used to trade/communicate     
     def give_money(self): 
-        print('Give Money from agent: ',self.unique_id)
+        #print('Give Money from agent: ',self.unique_id)
         b = self.model.b
         a = self.model.a
         neighbors = self.neighbors()
@@ -335,7 +335,7 @@ class MoneyAgent(Agent):
     
    #links are deleted randomly at every time step
     def Link_Deletion(self):
-        print('Deletion', self.unique_id)
+        #print('Deletion', self.unique_id)
         if(random.random()>p_ld):
             node1 = random.choice(list(self.model.nodes))
             node2 = random.choice(list(self.model.nodes))
