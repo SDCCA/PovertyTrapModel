@@ -1,5 +1,5 @@
 from mesa import Agent, Model
-from mesa.time import RandomActivation
+from mesa.time import StagedActivation
 from mesa.datacollection import DataCollector
 import random
 import numpy as np
@@ -227,6 +227,7 @@ class MoneyAgent(Agent):
     
      #function used to trade/communicate     
     def give_money(self): 
+        print('Give Money from agent: ',self.unique_id)
         b = self.model.b
         a = self.model.a
         neighbors = self.neighbors()
@@ -252,6 +253,7 @@ class MoneyAgent(Agent):
                         self.model.G[other.unique_id][neighbor.unique_id]['weight'] = Edge_Weight(other,neighbor,b, a)
         
     def LocalAttachment_v1(self): 
+        #print('Local Attachment V1')
         b = self.model.b
         a = self.model.a
         node1 = random.choice(list(self.model.nodes))
@@ -275,6 +277,7 @@ class MoneyAgent(Agent):
     #3. a link is made between i and k with edge weight w0 (here, w0 = 1) and all edge weights are increased by wr(wr-calculated 
     #new edge weight between i and j)
     def LocalAttachment_v2(self):
+        #print("Local Attachment V2")
         b = self.model.b
         a = self.model.a
         #print("LA done")
@@ -332,7 +335,7 @@ class MoneyAgent(Agent):
     
    #links are deleted randomly at every time step
     def Link_Deletion(self):
-        #print('Deletion')
+        print('Deletion', self.unique_id)
         if(random.random()>p_ld):
             node1 = random.choice(list(self.model.nodes))
             node2 = random.choice(list(self.model.nodes))
@@ -346,12 +349,13 @@ class MoneyAgent(Agent):
                     
     def step(self):
         #if(self.k > 0):
-        self.income_updation()
-        self.give_money()
-        #self.LocalAttachment_v1()
-        self.LocalAttachment_v2()
-        self.Link_Deletion()
-        self.income_generation() 
+        print('This should not be running! Please check!')
+        #self.income_updation()
+        #self.give_money()
+        ##self.LocalAttachment_v1()
+        #self.LocalAttachment_v2()
+        #self.Link_Deletion()
+        #self.income_generation() 
         
         
         
@@ -371,7 +375,7 @@ class BoltzmannWealthModelNetwork(Model):
         nx.set_edge_attributes(self.G, 1, 'weight') #setting all initial edges with a weight of 1
         self.nodes = np.linspace(0,N-1,N, dtype = 'int') #to keep track of the N nodes   
         
-        self.schedule = RandomActivation(self)
+        self.schedule = StagedActivation(self, ['income_updation','give_money','LocalAttachment_v2','Link_Deletion','income_generation'], shuffle=True, shuffle_between_stages=True)
         self.datacollector = DataCollector(model_reporters = {"Gini": 'gini'},agent_reporters={"k_t":'k','income':'income',
                                            'H':'front', 'consumption':'consum','lamda':'lamda','alpha':'alpha', 'technology':'tec' })       
         for i, node in enumerate(self.G.nodes()):
@@ -413,15 +417,15 @@ class BoltzmannWealthModelNetwork(Model):
 
     def run_model(self, n):
         for i in tqdm(range(n)):
-            #print("Step:", i+1)
+            print("Step:", i+1)
             self.time = i+1
             self.step()
             self.Global_Attachment()
             self.gini = self.compute_gini()
             
             
-N = 500
-steps = 125
+N = 5
+steps = 5
 b = 35
 a = 0.69
 alpha = np.random.normal(loc = 1.08, scale = 0.074, size = N) 
