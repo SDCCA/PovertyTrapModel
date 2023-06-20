@@ -17,3 +17,10 @@ Moving beyond the conventional one-dimensional poverty trap models and incorpora
 
 
 By applying the concepts of resilience thinking to this model, the project intends to identify the causal mechanisms characterizing and consolidating the poverty trap in an urban setting. This will help in developing effective poverty alleviation strategies that are best suited under various circumstances.
+
+
+## Snellius Interactive Job:
+Command to start an interactive job on snellius: (1 core for 2 hours)
+~~~(bash)
+salloc --ntasks=1 -t 2:00:00
+~~~
