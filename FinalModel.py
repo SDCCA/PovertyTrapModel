@@ -1,5 +1,5 @@
 from mesa import Agent, Model
-from mesa.time import StagedActivation
+from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 import random
 import numpy as np
@@ -23,12 +23,16 @@ to random.choice(list(self.model.nodes)) and random.choice(list(self.nodes)), re
 There should be a better way, but until the network mechanisms have been finalized, 
 I think this will serve as a sufficient patch.
 
--The progress bar is not functioning, perhaps because of my tqdm import edit.'''
+-The progress bar is not functioning, perhaps because of my tqdm import edit.
+
+-Sigma, risk averseness for the isoelastic utility function, is now heterogeneous.
+'''
+
 
 #0<gamma_L<gamma_H<1
-gamma_L = 0.3
-gamma_H = 0.45
-fixed_cost = 0.45
+#gamma_L = 0.3
+#gamma_H = 0.45
+#fixed_cost = 0.45
 sigma = 1.5
 beta = 0.95
 delta = 0.08
@@ -37,6 +41,13 @@ g = 1
 p_ga = random.random()#for global attachment
 p_ld = random.random()#for link deletion
 p_delta = 0.3#for local attachment
+
+TechTable = {#contains values for 0:gamma 1:cost
+# VMG things get stuck in a while loop if the gamma is less than 0.3 (tried 0.2)
+# not sure yet if/how this will be problematic 
+    "low":   [0.3,  0   ],
+   # "medium":[0.35, 0.25],
+    "high":  [0.45, 0.45]}
 
 
 #global function that calculates the weight of the edge, args: the 2 nodes (agent class objects)
@@ -65,19 +76,16 @@ def calculating_k_c(agent, gamma, E_t, time):
         e1 = pow(beta, time - 1)*E_t*theta*(agent.alpha*gamma*a2 + (1-delta)) 
 
         #(beta*E_t*theta*(alpha*gamma_H*a2 + (1-delta)))^(1/sigma)
-        e2 = pow(e1, (1/sigma))
+        e2 = pow(e1, (1/agent.sigma))
         
         #c*sigmathroot(beta*E_t*theta*(alpha*gamma_H*a2 + (1-delta)))^(1/sigma)
         con = agent.consum * e2
         #print("Calculated consumption :", con)
-        
+
         return k_new, con, slope
     
-def isocline(agent):
-        if(agent.tec == 'H'):
-            con_cond = agent.alpha*pow(agent.k, gamma_H) + (1-delta)*agent.k - agent.k/theta
-        if(agent.tec == 'L'):
-            con_cond = agent.alpha*pow(agent.k, gamma_L) + (1-delta)*agent.k - agent.k/theta   
+def isocline(agent): #Eq 3.7
+        con_cond = agent.alpha*pow(agent.k, TechTable[agent.tec][0]) + (1-delta)*agent.k - agent.k/theta
         return con_cond   
         
         
@@ -91,36 +99,36 @@ class MoneyAgent(Agent):
         while (self.lamda == 1):
             self.lamda = round(random.uniform(0.1,1),1)    
         self.alpha = alpha[unique_id]#human capital 
+        self.sigma = sigma #risk averseness
         self.tec = 'NA'
         self.income = 0 #initialising income
         self.income_generation() #finding income corresponding to the human capital,
                                  #needed here to set the initial consumption
-        self.front = 0 #for micawber frontier
+        self.fronts = 0 #for resetting micawber frontier 
         con_cond = isocline(self)
         #self.consum = isocline(self)
         #if(self.consum < 0):
             #self.consum = 0.1
-        if(self.tec == 'H'):
-            self.slope = gamma_H*self.alpha*pow(self.k, gamma_H -1) + 1 - delta - 1/theta
-        else:
-            self.slope = gamma_L*self.alpha*pow(self.k, gamma_L -1) + 1 - delta - 1/theta
-    
+
+        self.slope = TechTable[self.tec][0] * self.alpha * pow(self.k, TechTable[self.tec][0] - 1) + 1 - delta - 1/theta
+        #print("Checkpoint slope",unique_id)
+
         if(self.slope > 0): #small k_t
-            #print("1st quadrant")
-            if(con_cond > 0 and con_cond<self.k):
+            #print("1st quadrant",self.slope)
+            if(con_cond > 0 and con_cond < self.k):
                 self.consum = con_cond
             else:
                 con = con_cond - random.random()
-                while(con>self.k or con < 0):
+                while(con > self.k or con < 0):
                     con = con_cond - random.random()
                 self.consum = con
         else:
-            #print("4th quadrant")
-            if(con_cond > 0 and con_cond <self.k):
+            #print("4th quadrant",self.slope)
+            if(con_cond > 0 and con_cond < self.k):
                 self.consum = con_cond
             else:
                 con = con_cond + random.random()
-                while(con>self.k or con<0):
+                while(con > self.k or con < 0):
                     con = con_cond + random.random()
                 self.consum = con
     
@@ -131,19 +139,17 @@ class MoneyAgent(Agent):
     #function that decides income based on the type of technology
     def income_generation(self): 
         #print("Generating income")
-        b1 = pow(self.k,gamma_H)
-        H = self.alpha*b1 - fixed_cost
+        f = {}
+        for i in TechTable.keys(): #in the end, they may each need their own tech table
+            entry = self.alpha * pow(self.k, TechTable[i][0]) - TechTable[i][1]
+            f[i] = entry
         
-        b2 = pow(self.k,gamma_L)
-        L = self.alpha*b2
-        
-        self.front = H
-        if(H>=L): #
-            self.income = H
-            self.tec = 'H'
-        else:
-            self.income = L
-            self.tec = 'L'
+        self.fronts = f
+
+        #VMG a technology is chosen based on maximizing income
+        self.tec = max(f, key=f.get)
+        self.income = f.get(self.tec)
+   
             
     
     #function that updates the capital and consumption for the next time step    
@@ -158,64 +164,33 @@ class MoneyAgent(Agent):
         #print("Agent:{}  Tec: {}".format(self.unique_id, self.tec))
         #print("Old k = {}, alpha = {} " .format(k, alpha))
         #print("mean : ", E_t)
-       
-        if(self.tec == 'H'):
             
-            k_new, con, slope = calculating_k_c(self, gamma_H, E_t, self.model.time)
-            self.k = k_new
+        k_new, con, slope = calculating_k_c(self, TechTable[self.tec][0], E_t, self.model.time)
+        self.k = k_new
             
-            c_cond = isocline(self)
-            #print("c_cond = ", c_cond)
-            
-            if(slope > 0):
-                #print("1st quadrant")
-                if(con <=c_cond and con<self.k):
-                    self.consum = con
-                else:
-                    con = c_cond - random.random()
-                    while(con>self.k or con < 0):
-                        con = c_cond - random.random()
-#                    con = c_cond - random.uniform( max( c_cond - self.k, 0 ), min( c_cond, 1 ))
-                    self.consum = con
-            else:
-                #print("4th quadrant")
-                if(con > c_cond and con<self.k):
-                    self.consum = con
-                else:
-                    con = c_cond - random.random()
-                    while(con>self.k or con < 0):
-                        con = c_cond - random.random()
-#                    con = c_cond - random.uniform( max( c_cond - self.k, 0 ), min( c_cond, 1 ))
-                    self.consum = con
-
-        if(self.tec == 'L'):
-            
-            k_new, con, slope = calculating_k_c(self, gamma_L, E_t, self.model.time)
-            self.k = k_new
-            
-            c_cond = isocline(self)
+        c_cond = isocline(self)
             #print("c_cond = ", c_cond)
 
-            if(slope > 0):
-                #print("1st quadrant")
-                if(con <=c_cond and con<self.k):
-                    self.consum = con
-                else:
-                    con = c_cond - random.random()
-                    while(con>self.k or con < 0):
-                        con = c_cond - random.random()
-#                    con = c_cond - random.uniform( max( c_cond - self.k, 0 ), min( c_cond, 1 ))
-                    self.consum = con
+        if(slope > 0):
+            #print("1st quadrant II")
+            if(con <= c_cond and con < self.k):
+                self.consum = con
             else:
-                #print("4th quadrant")
-                if(con > c_cond and con<self.k):
-                    self.consum = con
-                else:
+                con = c_cond - random.random()
+                while(con > self.k or con < 0):
                     con = c_cond - random.random()
-                    while(con>self.k or con<0):
-                        con = c_cond - random.random()
-#                    con = c_cond - random.uniform( max( c_cond - self.k, 0 ), min( c_cond, 1 ))
-                    self.consum = con  
+                self.consum = con
+        else:
+            #print("4th quadrant II")
+            if(con > c_cond and con < self.k):
+                self.consum = con
+            else:
+                con = c_cond - random.random()
+                while(con>self.k or con < 0):
+                    con = c_cond - random.random()
+                self.consum = con
+
+        
         #print("Old C:", consum)   
         #print("New Consum :", self.consum)
     
@@ -231,7 +206,6 @@ class MoneyAgent(Agent):
     
      #function used to trade/communicate     
     def give_money(self): 
-        #print('Give Money from agent: ',self.unique_id)
         b = self.model.b
         a = self.model.a
         neighbors = self.neighbors()
@@ -257,7 +231,6 @@ class MoneyAgent(Agent):
                         self.model.G[other.unique_id][neighbor.unique_id]['weight'] = Edge_Weight(other,neighbor,b, a)
         
     def LocalAttachment_v1(self): 
-        #print('Local Attachment V1')
         b = self.model.b
         a = self.model.a
         node1 = random.choice(list(self.model.nodes))
@@ -281,7 +254,6 @@ class MoneyAgent(Agent):
     #3. a link is made between i and k with edge weight w0 (here, w0 = 1) and all edge weights are increased by wr(wr-calculated 
     #new edge weight between i and j)
     def LocalAttachment_v2(self):
-        #print("Local Attachment V2")
         b = self.model.b
         a = self.model.a
         #print("LA done")
@@ -339,7 +311,7 @@ class MoneyAgent(Agent):
     
    #links are deleted randomly at every time step
     def Link_Deletion(self):
-        #print('Deletion', self.unique_id)
+        #print('Deletion')
         if(random.random()>p_ld):
             node1 = random.choice(list(self.model.nodes))
             node2 = random.choice(list(self.model.nodes))
@@ -353,20 +325,19 @@ class MoneyAgent(Agent):
                     
     def step(self):
         #if(self.k > 0):
-        print('This should not be running! Please check!')
-        #self.income_updation()
-        #self.give_money()
-        ##self.LocalAttachment_v1()
-        #self.LocalAttachment_v2()
-        #self.Link_Deletion()
-        #self.income_generation() 
+        self.income_updation()
+        self.give_money()
+        #self.LocalAttachment_v1()
+        self.LocalAttachment_v2()
+        self.Link_Deletion()
+        self.income_generation() 
         
         
         
 class BoltzmannWealthModelNetwork(Model):
     """A model with some number of agents."""
 
-    def __init__(self,b, a,N=500): #N- number of agents
+    def __init__(self,b, a,N=100): #N- number of agents
 
         self.N = N
         self.b =b
@@ -379,9 +350,9 @@ class BoltzmannWealthModelNetwork(Model):
         nx.set_edge_attributes(self.G, 1, 'weight') #setting all initial edges with a weight of 1
         self.nodes = np.linspace(0,N-1,N, dtype = 'int') #to keep track of the N nodes   
         
-        self.schedule = StagedActivation(self, ['income_updation','give_money','LocalAttachment_v2','Link_Deletion','income_generation'], shuffle=True, shuffle_between_stages=True)
+        self.schedule = RandomActivation(self)
         self.datacollector = DataCollector(model_reporters = {"Gini": 'gini'},agent_reporters={"k_t":'k','income':'income',
-                                           'H':'front', 'consumption':'consum','lamda':'lamda','alpha':'alpha', 'technology':'tec' })       
+                                           'Fronts':'fronts', 'consumption':'consum','lamda':'lamda','alpha':'alpha', 'technology':'tec' })       
         for i, node in enumerate(self.G.nodes()):
             agent = MoneyAgent(i, self)
             self.schedule.add(agent)
@@ -421,14 +392,14 @@ class BoltzmannWealthModelNetwork(Model):
 
     def run_model(self, n):
         for i in tqdm(range(n)):
-            print("Step:", i+1)
+            #print("Step:", i+1)
             self.time = i+1
             self.step()
             self.Global_Attachment()
             self.gini = self.compute_gini()
             
             
-N = 50
+N = 500
 steps = 125
 b = 35
 a = 0.69
@@ -439,6 +410,5 @@ model.run_model(steps)
 model_df = model.datacollector.get_model_vars_dataframe()
 agent_df = model.datacollector.get_agent_vars_dataframe()
 agent_df.reset_index(level=1, inplace = True)
-agent_df.to_csv("V2_{}Agents_{}Steps.csv".format(N,steps))
-model_df.to_csv("V2_Model_{}Agents_{}Steps.csv".format(N,steps))
-
+agent_df.to_csv("V2SE_{}Agents_{}Steps.csv".format(N,steps))
+model_df.to_csv("V2SE_Model_{}Agents_{}Steps.csv".format(N,steps))
