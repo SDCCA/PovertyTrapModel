@@ -88,7 +88,22 @@ def calculating_k_c(agent, gamma, E_t, time):
 def isocline(agent): #Eq 3.7
         con_cond = agent.alpha*pow(agent.k, TechTable[agent.tec][0]) + (1-delta)*agent.k - agent.k/theta
         return con_cond   
-        
+
+def introduce_noise(agent, c_cond):
+        if(c_cond <= 0 or 1 <= c_cond - agent.k):
+            print("Invalid c_cond:",c_cond,"versus k:",agent.k)
+            return agent.k
+        # introduce stochastic noise to the isocline, conforming to boundary conditions:
+        # * consumption cannot be less than 0
+        # * consumption cannot be more than the current capital
+        # * consumption cannot be more than the isocline.
+        # * stochastic noise is at more 1
+        con = c_cond - random.random()
+        while(con > agent.k or con < 0):
+            con = c_cond - random.random()
+        #con = c_cond - random.uniform(max(c_cond - agent.k, 0), min(c_cond, 1))
+        return con
+    
         
 class MoneyAgent(Agent):
     
@@ -119,19 +134,13 @@ class MoneyAgent(Agent):
             if(con_cond > 0 and con_cond < self.k):
                 self.consum = con_cond
             else:
-                con = con_cond - random.random()
-                while(con > self.k or con < 0):
-                    con = con_cond - random.random()
-                self.consum = con
+                self.consum = introduce_noise(self, c_cond=con_cond)
         else:
             #print("4th quadrant",self.slope)
             if(con_cond > 0 and con_cond < self.k):
                 self.consum = con_cond
             else:
-                con = con_cond + random.random()
-                while(con > self.k or con < 0):
-                    con = con_cond + random.random()
-                self.consum = con
+                self.consum = introduce_noise(self, c_cond=con_cond)
     
         self.model.agents.append(self)
 
@@ -177,19 +186,13 @@ class MoneyAgent(Agent):
             if(con <= c_cond and con < self.k):
                 self.consum = con
             else:
-                con = c_cond - random.random()
-                while(con > self.k or con < 0):
-                    con = c_cond - random.random()
-                self.consum = con
+                self.consum = introduce_noise(self, c_cond)
         else:
             #print("4th quadrant II")
             if(con > c_cond and con < self.k):
                 self.consum = con
             else:
-                con = c_cond - random.random()
-                while(con>self.k or con < 0):
-                    con = c_cond - random.random()
-                self.consum = con
+                self.consum = introduce_noise(self, c_cond)
 
         
         #print("Old C:", consum)   
