@@ -1,11 +1,5 @@
 # Attention:
-Here is an updated version of FinalModel.py (previously under Paper_FinalCodes) which produces output csv files as of 28 March 2023. 
-The notebook experiments have been similarly edited and are running, too.
-There was no original pipfile available; I have plopped in my requirements.txt in case it helps anyone.
--Victoria
-
-
-
+This is a very special version of the original FinalModel.py with primary changes being to the structure of the functions involving high and low technology. It is derived from the April 10 update to the AdaptationStrategies branch, with the stochastic theta and "medium" technology options removed. 
 
 # GraduationResearchProject
 Modeling Poverty Alleviation Pathways Using Resilience Thinking 
