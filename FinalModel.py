@@ -90,7 +90,10 @@ def isocline(agent): #Eq 3.7
         return con_cond   
 
 def introduce_noise(agent, c_cond):
-        if(c_cond <= 0 or 1 <= c_cond - agent.k):
+        if(c_cond <= 0):
+            print("Invalid c_cond:",c_cond)
+            return 0
+        if(1 <= c_cond - agent.k):
             print("Invalid c_cond:",c_cond,"versus k:",agent.k)
             return agent.k
         # introduce stochastic noise to the isocline, conforming to boundary conditions:
