@@ -104,7 +104,11 @@ def introduce_noise(agent, c_cond):
         #con = c_cond - random.random()
         #while(con > agent.k or con < 0):
         #    con = c_cond - random.random()
-        con = c_cond - random.uniform(max(c_cond - agent.k, 0), min(c_cond, 1))
+        min_val = max(c_cond - agent.k, 0)
+        max_val = min(c_cond, 1)
+        if(max_val < min_val):
+            min_val, max_val = max_val, min_val
+        con = c_cond - random.uniform(min_val, max_val)
         return con
     
         
