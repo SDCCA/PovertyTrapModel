@@ -1,5 +1,5 @@
 # Attention:
-This is a very special, slightly less redundant version of the original FinalModel.py with primary changes being to the structure of the codes involving high and low technology. It is derived from the April 10 update to the AdaptationStrategies branch, with the stochastic theta and "medium" technology options removed. 
+This is a very special version of the original FinalModel.py with primary changes being to the structure of the functions involving high and low technology. It is derived from the April 10 update to the AdaptationStrategies branch, with the stochastic theta and "medium" technology options removed. 
 
 # GraduationResearchProject
 Modeling Poverty Alleviation Pathways Using Resilience Thinking 
