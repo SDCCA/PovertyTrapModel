@@ -101,10 +101,10 @@ def introduce_noise(agent, c_cond):
         # * consumption cannot be more than the current capital
         # * consumption cannot be more than the isocline.
         # * stochastic noise is at more 1
-        con = c_cond - random.random()
-        while(con > agent.k or con < 0):
-            con = c_cond - random.random()
-        #con = c_cond - random.uniform(max(c_cond - agent.k, 0), min(c_cond, 1))
+        #con = c_cond - random.random()
+        #while(con > agent.k or con < 0):
+        #    con = c_cond - random.random()
+        con = c_cond - random.uniform(max(c_cond - agent.k, 0), min(c_cond, 1))
         return con
     
         
