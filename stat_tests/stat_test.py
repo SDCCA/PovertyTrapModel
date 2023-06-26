@@ -8,6 +8,10 @@ defaultbaseline ="../test_data/V2_500Agents_125StepsSeed1.csv"
 defaultpovertythreshold = 1.
 
 def parse_args():
+	"""
+    The tests can be run using
+    python stat_test.py 
+	"""
 	parser = argparse.ArgumentParser()
 
 	parser.add_argument( "--simulation","-s",help="path to simulation output to be evaluated for similarity ", type=str, required=True)
@@ -42,13 +46,11 @@ def print_stat_test_output(pvalues,properties):
                 print(f"Null hypothesis of same parent distribution rejected for {prop} at p = {pv} \n")
 
 
+def perform_stat_test(simulation_file, baseline_file, povertythreshold):
 
-def main():
-    args = parse_args()
-    
     print('loading data ...\n')
-    sim_data = load_sim_file(args.simulation)
-    base_data = load_sim_file(args.baseline)
+    sim_data = load_sim_file(simulation_file)
+    base_data = load_sim_file(baseline_file)
 
     """
     calculate derived properties
@@ -56,8 +58,8 @@ def main():
     """
 
     print("calculating derived properties ...\n")
-    sim_data["InPoverty"] = sim_data["k_t"] < args.povertythreshold
-    base_data["InPoverty"] = base_data["k_t"] < args.povertythreshold
+    sim_data["InPoverty"] = sim_data["k_t"] < povertythreshold
+    base_data["InPoverty"] = base_data["k_t"] < povertythreshold
 
 
     sim_total_steps_in_poverty = sim_data.groupby("AgentID").sum("InPoverty")[["InPoverty"]]
@@ -102,10 +104,16 @@ def main():
     TODO: Tie into CI
     """
     print_stat_test_output([cvm_kt_p,cvm_total_poverty_p,cvm_consec_poverty_p,cvm_LtoH_p,cvm_HtoL_p],['k_t','total steps in poverty','max consecutive steps in poverty','switches from L to H technology','switches from H to L technology'])
+
+
+def main():
+    args = parse_args()
     
+    simulation_file = args.simulation
+    baseline_file = args.baseline
+    povertythreshold = args.povertythreshold
 
-
-
+    perform_stat_test(simulation_file, baseline_file, povertythreshold)
 
 
 if __name__ == "__main__":
