@@ -2,13 +2,8 @@
 # spent below a set threshold for each agent at t_final
 
 import pandas as pd
+import scipy.stats as st
 
-
-file="V2_500Agents_125Steps.csv"
-data=pd.read_csv(file,header=0)
-threshold=1
-
-data["InPoverty"]=data["k_t"] < threshold
 
 def max_consec(values):
 # Compare poverty bool of step and previous step; if both are true, raise the consecutive day tally. 
@@ -48,21 +43,20 @@ def tally_switches(values):
 
 
 
+def CramerVonMises(sim,base,prop,collateSteps=False):
+    if collateSteps == True:
+        maxStepSim = max(sim["Step"])
+        maxStepBase = max(base["Step"])
+        simProp = sim[sim['Step']==maxStepSim][prop]
+        baseProp = base[base['Step']==maxStepBase][prop]
+    else:
+        simProp = sim[prop]
+        baseProp = base[prop]
 
-totalsteps=data.groupby("AgentID").sum("InPoverty")[["InPoverty"]]
-
-consecutive=data.groupby("AgentID").apply(max_consec)
-
-# visually checking differences for feasibility
-
-#print(totalsteps["poverty"].compare(consecutive["consecutive"]))
+    cvm = st.cramervonmises_2samp(simProp,baseProp)
+    return cvm.pvalue, cvm.statistic
 
 
-
-switches=data.groupby("AgentID").apply(tally_switches)
-
+    
 
 
-results=totalsteps.join(consecutive, on="AgentID").join(switches, on="AgentID")
-
-print(results.head())
