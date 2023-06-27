@@ -10,5 +10,5 @@
 conda activate ptm
 
 cd /projects/0/einf4446/Pranav/PovertyTrapModel
-python -m cProfile -o profile_ptm_nowhile_500N_125T.out FinalModel.py  
+python -m cProfile -o profile_ptm_nobreak_500N_125T.out FinalModel.py  
 
