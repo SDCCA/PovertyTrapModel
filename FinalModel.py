@@ -322,6 +322,19 @@ class MoneyAgent(Agent):
                     
     
    #links are deleted randomly at every time step
+    #Notes (tvl):
+    # Runs once per AGENT step.
+    # So, up to 1 edge is removed each model step.
+    # The condition compares a random number to the global value, which is also a random number...
+    # Assuming this condition is passed, it chooses a random node
+    # and then it has 5 chances to pick a random node and hope that it is connected to that node.
+    # Note that the same node can be chosen twice, so it could check whether the node is attached to itself.
+    # It also does not use the network when selecting the second node.
+    #   This means that if the number of agents is large relative to their network size, the chances of
+    #   accidentally selecting two nodes that are connected is very small.
+    #
+    # Suggestion:
+    # Replace by picking a random node and a random neighbor of that node.
     def Link_Deletion(self):
         #print('Deletion')
         if(random.random()>p_ld):
@@ -374,6 +387,15 @@ class BoltzmannWealthModelNetwork(Model):
         self.running = True
         self.datacollector.collect(self)
         
+    #Notes (tvl):
+    # Runs once per MODEL step.
+    # So, up to 1 edge is added each model step.
+    # The condition compares a random number to the global value, which is also a random number...
+    # The same node can be chosen twice, so it could be attached to itself.
+    #
+    # Suggestion:
+    # Replace by shuffle(list) and look for the first successive pair that does not have an edge?
+    #   So, suffle and then connect (0,1) or (1,2) or (2,3) etc.
     def Global_Attachment(self):
         if(random.random()>p_ga):
             #print("Global Attachment no: {}".format(self.count))
@@ -412,13 +434,17 @@ class BoltzmannWealthModelNetwork(Model):
             self.Global_Attachment()
             self.gini = self.compute_gini()
             
-            
+
+#Notes (tvl):
+# Why are these model globals not defined at the top, with the agent globals?
+# Should the model and agent be split into separate sources?
 N = 50
 steps = 125
 b = 35
 a = 0.69
 alpha = np.random.normal(loc = 1.08, scale = 0.074, size = N) 
 capital = np.random.uniform(low = 0.1, high = 10, size = N)
+
 model = BoltzmannWealthModelNetwork(b, a,N)
 model.run_model(steps)
 model_df = model.datacollector.get_model_vars_dataframe()
