@@ -15,10 +15,13 @@ def max_consec(values):
     for i in range(1,len(values)):
         if(values.iloc[i]["InPoverty"] == True) & (values.iloc[i-1]["InPoverty"] == True):
             tally+=1
+        else:
             if tally > maximum:
                 maximum=tally
-        else:
             tally=0
+ #Incase some one was in proverty till the end, do a check at the end for maximum days (niche case)
+ if tally > maximum:
+                maximum=tally
     if maximum > 0:
         return pd.Series({"MaxConsec":maximum+1})
     return pd.Series({"MaxConsec":0})
