@@ -264,6 +264,23 @@ class MoneyAgent(Agent):
     #i and k. 
     #3. a link is made between i and k with edge weight w0 (here, w0 = 1) and all edge weights are increased by wr(wr-calculated 
     #new edge weight between i and j)
+    #
+    #
+    # From Paper [1]:
+    # A randomly chosen node i (its degree is k; with k_i≠0) chooses one of its neighbors j [later: filtered by having similar capital]
+    #   with the probability proportional to w_{ij} which stands for the weight of the link between nodes i and j.
+    # Ten node j chooses one of its neighbors [later: filtered by having similar capital] but i, say k, randomly
+    #   with probability proportional to w_{jk} and
+    # if nodes i and k are not connected, they are connected with probability p_Δ with a link of weight w_0.
+    # In addition, all the involved [later: existing] links increase the weights by w_r, whether a new link is created or not.
+    #
+    # Q: what is p_Δ? [A: 0.02]
+    # Q: what is w_0?
+    # Q: what is w_r? [A: 1]
+    #
+    # Later:
+    # "Indeed, the link reinforcement in LA plays here a key role [...]"
+    # So neither p_Δ or w_r should be set to 0.
     def LocalAttachment_v2(self):
         #print("Local Attachment V2")
         b = self.model.b
@@ -335,6 +352,14 @@ class MoneyAgent(Agent):
     #
     # Suggestion:
     # Replace by picking a random node and a random neighbor of that node.
+    #
+    #
+    # From Paper [1]:
+    # Each link is removed from the system with probability p_d at each time step. (Time is measured in sweeps).
+    #
+    # Q: what is p_d? [A: 0.005]
+    # Presumably a time step is a model step.
+    # However, in the paper, the features are static, so the only thing that changes is the network (edges and edge weights).
     def Link_Deletion(self):
         #print('Deletion')
         if(random.random()>p_ld):
@@ -396,9 +421,28 @@ class BoltzmannWealthModelNetwork(Model):
     # Suggestion:
     # Replace by shuffle(list) and look for the first successive pair that does not have an edge?
     #   So, suffle and then connect (0,1) or (1,2) or (2,3) etc.
+    #
+    #
+    # From Paper [1]:
+    # A node is selected at random, its degree is k.
+    # With probability δ_{0,k}+(1−δ_{0,k})p_r it is connected with a new link of weight w_0 to a randomly chosen node.
+    # In the unlikely event that the two nodes are already connected, a new target node is chosen.
+    #
+    # Q: what is δ_{0,k}? [A: Kronecker delta of 0 and k (i.e. node degree): 0 if 0 \neq k; 1 if 0 = k]
+    #    [Note, this answer is debatable, because the notation δ_{0,k} is not defined, but δ(i,j) is.]
+    # Q: what is p_r? [A: 0.001]
+    # Q: what is w_0?
+    #
+    # From Paper [1]:
+    # More specifcally, in a GA step, the node i chooses randomly a node, say j, sharing the same trait for the feature f in the network. [i.e. similar capital]
+    # If the node i has any neighbor sharing the same trait for the feature f, then the link between i and j is created with probability p_r.
+    # Otherwise, the link is created with probability one.
+    # The weight of the created link is given as w0.
+    #
+    # Q: what is p_r? [A: 0.001]
     def Global_Attachment(self):
         if(random.random()>p_ga):
-            #print("Global Attachment no: {}".format(self.count))
+            #print("Global Attachment no: {}".format(self.count_GA))
             self.count_GA+=1
             node1 = random.choice(list(self.nodes))
             node2 = random.choice(list(self.nodes))
@@ -426,6 +470,12 @@ class BoltzmannWealthModelNetwork(Model):
         # collect data
         self.datacollector.collect(self)
 
+    # From Paper [1]:
+    # Sequential update is applied, first GA, then LA to the nodes and then LD to the links. 
+    #
+    # In each GA and LA step, a feature f of the focal node i is randomly chosen from F features and it can make links only
+    #   to the nodes sharing the same trait for the feature f, i.e., only to the nodes j satisfying σ_j^f = σ_i^f.
+    #   [in our case, there is only one feature: current wealth. However, the similarity of this feature should infuence the selection probability for both GA and LA.]
     def run_model(self, n):
         for i in tqdm(range(n)):
             #print("Step:", i+1)
@@ -452,3 +502,5 @@ agent_df = model.datacollector.get_agent_vars_dataframe()
 agent_df.reset_index(level=1, inplace = True)
 agent_df.to_csv("V2SE_{}Agents_{}Steps.csv".format(N,steps))
 model_df.to_csv("V2SE_Model_{}Agents_{}Steps.csv".format(N,steps))
+
+# [1] Structural transition in social networks: The role of homophily, authors-authors-authors, place
