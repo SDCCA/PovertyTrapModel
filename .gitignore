@@ -1,0 +1,5 @@
+*/__pycache__/*
+.ipynb_checkpoints/
+V2*_*Agents_*Steps.csv
+V2*_Model_*Agents_*Steps.csv
+*slurm-*
