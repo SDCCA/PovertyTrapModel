@@ -7,6 +7,6 @@ April 10, 2023 - Generalized functions income_generation, isocline, and income_u
 May 31, 2023 - Changed the consumption calculation method to optimization with scipy. 
              - Added agent attribute theta, which is a personal perception of future shocks. This value is updated at every time step based on their sensitivity to observed theta.
 
-July 28,2023 - Added adaptation options housed in AdapTable from which agents can pick based on value maximization.
+July 28, 2023 - Added adaptation options housed in AdapTable from which agents can pick based on value maximization.
              - Adjusted give_money() function so that it updates and is reflected in capital, newly named trade_money(). Agents also now trade with a portion of their entire capital, not just a portion of capital generated in that timestep.
              
