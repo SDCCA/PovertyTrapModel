@@ -1,5 +1,5 @@
 from mesa import Agent, Model
-from mesa.time import RandomActivation
+from mesa.time import StagedActivation
 from mesa.datacollection import DataCollector
 import random
 import numpy as np
@@ -15,6 +15,7 @@ import statistics
 import cmath
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
+from scipy.optimize import basinhopping
 
 
 
@@ -37,13 +38,15 @@ Updates:
 
 
 
-Version 4 notes:
-FinalModelScipyV4 is developed from FinalModelScipyV3.py
-In this version, a environmentally responsive theta is introduced. 
+Version 5 notes:
+FinalModelScipyV5 is developed from FinalModelScipyV4.py
+In this version, adaptation options are introduced. For each adaptation cost, 
+there is a corresponding theta difference multiplier. Perfect knowledge of all 
+options and their efficacies is assumed. 
+The current optimization chooses the maximum value from the bellman equation 
+solutions for each available adaptation option.
 
 
-
-Results: 
 
 '''
 
@@ -66,6 +69,9 @@ p_delta = 0.3#for local attachment
 𝛿 = 0.08
 β = 0.95
 
+#Debug
+problemAgents=range(500)
+
 
 TechTable = {#contains values for 0:gamma 1:cost 2:theta
 # VMG things get stuck in a while loop if the gamma is less than 0.3 (tried 0.2)
@@ -80,11 +86,13 @@ TechTable = {#contains values for 0:gamma 1:cost 2:theta
 
 TechTableArray = np.array([[ 0.3,  0 ],[0.35, 0.15],[0.45, 0.65]])
 
-AdapTable = {#contains values for 0:theta 1:cost
-# VMG untested and currently unused
-    "none":   [0.6, 0   ],
-    "good":   [0.8, 0.25],
+AdapTable = {#contains values for 0:theta 1:cost (for consideration:effort? type? design life?)
+    "none":   [  0, 0   ],
+    "good":   [0.5, 0.25],
     "better": [0.9, 0.45]}
+
+AdapTableArray = np.array([[ 0,  0 ],[0.5, 0.25],[0.9, 0.45]])
+
 
 #global function that calculates the weight of the edge, args: the 2 nodes (agent class objects)
 #this is the homophily edge weight formula
@@ -125,9 +133,6 @@ def utility(c, σ, type="isoelastic"):
     else:
         print("Unspecified utility function!!!")
 
-# def income_function(k, α, γ, tec_cost):
-
-#     return α * k**γ - tec_cost
 
 def income_function(k,α): 
     #print("Generating income")
@@ -136,55 +141,38 @@ def income_function(k,α):
         entry = α * k**TechTable[i][0] - TechTable[i][1]
         f.append(entry)
     return max(f)
+
+def adaptation_function(θ,i_a):
+    
+    for i in AdapTable.keys(): #in the end, they should have their own adaptation table
+        if AdapTable[i][1] <= i_a:
+            m = AdapTable[i][0]
+        else:
+            break
+    return θ + m * (1-θ)
+
         
-def calculate_next_k_and_c(k,c,θ,𝛿,σ,α):
+
+        
+def calculate_next_k(agentinfo):
+    k,c,i_a,m = agentinfo.k,agentinfo.consum,agentinfo.i_a,agentinfo.m
     #print(f"Old k and c {k,c}")
-    k_tplus1 = θ * (k - c + (1-𝛿) * k)
-    c_tplus1 = solve_bellman(BellmanEquation(u=utility, f=income_function, k=k_tplus1, θ=θ, σ=σ, α=α))
-    #print(f"New k and c {k_tplus1,c_tplus1}\n")
-    return k_tplus1, c_tplus1
-
-class BellmanEquationStochastic:
-    #Adapted from: https://python.quantecon.org/optgrowth.html
-    def __init__(self,
-                 u,            # utility function
-                 f,            # production function
-                 k,            # current state k_t
-                 σ,            # risk averseness
-                 α,            # human capital
-                 μ=0.8,        # shock location parameter,for stochastic θ
-                 s=0.1,        # shock scale parameter,for stochastic θ
-                 β=β,          # discount factor
-                 𝛿=𝛿,          # depreciation factor
-                 grid_max=10,
-                 grid_size=100,
-                 shock_size=250,    # shock sample size
-                 seed=1234):
-
-        self.u, self.f, self.k, self.β, self.μ, self.s, self.𝛿, self.σ, self.α  = u, f, k, β, μ, s, 𝛿, σ, α
-
-        # Set up grid
-
-        self.grid=np.append(np.array([0.001, 0.01]),np.linspace(0.1, grid_max, grid_size))
-
-        # Identify target state k
-        self.index = np.searchsorted(self.grid, k)-1
-       
-
-
-        # Store shocks (with a seed, so results are reproducible)
-        self.shocks = np.random.normal(loc=μ, scale=s,size=shock_size)
-
-    def value(self, c, y, v_array):
-        """
-        Right hand side of the Bellman equation.
-        """
-
-        u, f, β, shocks, 𝛿, σ, α = self.u, self.f, self.β, self.shocks, self.𝛿, self.σ, self.α
-
-        v = interp1d(self.grid, v_array, bounds_error=False, fill_value="extrapolate")
+    if agentinfo.unique_id in problemAgents:
+        print(f"Calculating using k={k}, global_theta={global_θ[model.time]}, m={m}, c={c}, i_a={i_a}, sigma={agentinfo.σ}, alpha={agentinfo.α}, percieved theta={agentinfo.θ}")
+    k_tplus1 = (global_θ[model.time] + m * (1-global_θ[model.time])) * (k - c - i_a + (1-𝛿) * k)
+    #agentinfo.k=k_tplus1
+    
+    if agentinfo.unique_id in problemAgents:
+   
+        print(f"k_t+1 after Calculate={k_tplus1}={agentinfo.k}")
         
-        return u(c,σ) + β * np.mean(v((f(y,α) - c + (1 - 𝛿) * y) * shocks))
+    #print(f"New k and c {k_tplus1,c_tplus1}\n")
+    return k_tplus1
+
+
+
+
+
 
 class BellmanEquation:
      #Adapted from: https://python.quantecon.org/optgrowth.html
@@ -195,13 +183,13 @@ class BellmanEquation:
                  θ,            # given shock factor θ
                  σ,            # risk averseness
                  α,            # human capital
+                 i_a,          # adaptation investment
+                 m,            # protection multiplier
                  β=β,          # discount factor
                  𝛿=𝛿,          # depreciation factor 
-                 grid_max=10,
-                 grid_size=100,
                  name="BellmanNarrowExtended"):
 
-        self.u, self.f, self.k, self.β, self.θ, self.𝛿, self.σ, self.α, self.name = u, f, k, β, θ, 𝛿, σ, α, name
+        self.u, self.f, self.k, self.β, self.θ, self.𝛿, self.σ, self.α, self.i_a, self.m, self.name = u, f, k, β, θ, 𝛿, σ, α, i_a, m, name
 
         # Set up grid
         
@@ -210,6 +198,8 @@ class BellmanEquation:
 
         ind=np.searchsorted(startgrid, k)
         self.grid=np.concatenate((startgrid[:ind],np.array([k-1.0e-06, k]),startgrid[ind:]))
+
+        self.grid=self.grid[self.grid>i_a]
         #self.grid=np.concatenate((startgrid,np.array([k-0.1, k-1.0e-02, k, k+1.0e-02, k+0.1])))
 
         # Identify target state k
@@ -220,11 +210,12 @@ class BellmanEquation:
         Right hand side of the Bellman equation.
         """
 
-        u, f, β, θ, 𝛿, σ, α = self.u, self.f, self.β, self.θ, self.𝛿, self.σ, self.α
+        u, f, β, θ, 𝛿, σ, α, i_a, m = self.u, self.f, self.β, self.θ, self.𝛿, self.σ, self.α, self.i_a, self.m
 
         v = interp1d(self.grid, v_array, bounds_error=False, fill_value="extrapolate")
+        
+        return u(c,σ) + β * v((θ + m * (1-θ)) * (f(y,α) - c - i_a + (1 - 𝛿) * y))
 
-        return u(c,σ) + β * v(θ*(f(y,α) - c + (1 - 𝛿) * y))
 
 
 def update_bellman(v, bell):
@@ -240,20 +231,44 @@ def update_bellman(v, bell):
     """
     v_new = np.empty_like(v)
     v_greedy = np.empty_like(v)
-
+    
     for i in range(len(bell.grid)):
         y = bell.grid[i]
-        if y <= 1e-8:
-            print(f"struggling with {bell.grid} for y={y} for k = {bell.k} and theta={bell.θ}")
+        # if y <= 1e-8:
+        #     print(f"struggling with {bell.grid} for y={y} for k = {bell.k} and theta={bell.θ}")
         # Maximize RHS of Bellman equation at state y
-        c_star, v_max = maximize(bell.value, 1e-8, y, (y, v))
+        
+        c_star, v_max = maximize(bell.value, 1e-8, y-bell.i_a, (y, v))
+        #VMG HELP! is (1) subtracting i_a and (2) omitting an entire section of the grid necessary/correct
         v_new[i] = v_max
         v_greedy[i] = c_star
 
     return v_greedy, v_new
 
+def which_bellman(agentinfo):
+    feasible=[]
+    if agentinfo.unique_id in problemAgents:
+        print(f" k= {agentinfo.k} passed to which_bellman")
+
+    for option in agentinfo.adapt:
+        if option[1]>=agentinfo.k:
+            pass
+        else:
+            #print(f'working theta = {agentinfo.θ + option[0] * (1-agentinfo.θ)}, i_a= {option[1]}, k= {agentinfo.k}')
+            c,v=solve_bellman(BellmanEquation(u=utility, f=income_function, k=agentinfo.k, θ=agentinfo.θ, σ=agentinfo.σ, α=agentinfo.α, i_a=option[1],m=option[0]))
+            feasible.append([v,c,option[1],option[0]])
+    if agentinfo.unique_id in problemAgents:
+
+        print(feasible)
+    best=min(feasible)
+
+    if agentinfo.unique_id in problemAgents:
+        print(f"best={best}")
+    return best[1],best[2],best[3]
+
 def solve_bellman(bell,
                   tol=1,
+                  min_iter=10,
                   max_iter=1000,
                   verbose=False):
     """
@@ -263,28 +278,29 @@ def solve_bellman(bell,
 
     """
 
+
     # Set up loop
 
     v = bell.u(bell.grid,bell.σ)  # Initial condition
     i = 0
     error = tol + 1
 
-    while i < max_iter and error > tol:
+    while (i < max_iter and error > tol) or (i < min_iter):
         v_greedy, v_new = update_bellman(v, bell)
-        error = np.max(np.abs(v - v_new))
+        error = np.abs(v[bell.index] - v_new)[bell.index]
         i += 1
         # if verbose and i % print_skip == 0:
         #     print(f"Error at iteration {i} is {error}.")
         v = v_new
 
     if error > tol:
-        print(f"{bell.name} failed to converge for k={bell.k} with the looser tolerance!")
+        print(f"{bell.name} failed to converge for k={bell.k}, α = {bell.α},σ ={bell.σ}, i_a={bell.i_a}, and modified θ = {bell.θ + bell.m * (1-bell.θ)}!")
     elif verbose:
         print(f"Converged in {i} iterations.")
         print(f"Effective k and new c {np.around(bell.grid[bell.index],3),v_greedy[bell.index]}")
         
 
-    return v_greedy[bell.index]
+    return v_greedy[bell.index],v[bell.index]
 
 
 
@@ -298,20 +314,23 @@ class MoneyAgent(Agent):
         
         super().__init__(unique_id, model)
         self.k = (capital[unique_id]) #initial stock of wealth
-        self.lamda = round(random.uniform(0.1,0.949),1)  #VMG replaced lambda <1 while loop
+        self.λ = round(random.uniform(0.1,0.949),1)  #VMG replaced lambda <1 while loop
         self.α = alpha[unique_id]#human capital 
         self.σ = round(random.uniform(1,1.9),1)#risk averseness
-        self.θ = random.uniform(0.1,1) #percieved theta (cannot be zero or the optimizer breaks because k<)
+        self.θ = random.uniform(0.1,1) #percieved theta (cannot be zero or the optimizer breaks because k<) maybe one day this can be spatial?
         self.sensitivity = random.uniform(0,1) #factor controlling tractability of an agent's perception of theta 
         self.tec = "NA"
-        self.γ = "NA"
-        self.tec_cost = "NA"
+        #self.γ = "NA"
+        #self.tec_cost = "NA"
+        self.adapt = AdapTableArray
+        self.m = "NA"
+        self.i_a = "NA"
         self.income = 0 #initialising income
-        self.income_generation() #finding income corresponding to the human capital,
-                                 #needed here to set the initial consumption
+        self.record_income() #create record of income and tec
         self.fronts = 0 #for resetting micawber frontier(s?) 
-        self.consum = solve_bellman(BellmanEquation(u=utility, f=income_function, k=self.k, θ=self.θ, σ=self.σ, α=self.α))
-
+        self.consum = 0
+        self.initialize_consumption()
+        self.money_traded=0
         self.model.agents.append(self)
 
         
@@ -319,31 +338,43 @@ class MoneyAgent(Agent):
 
       
 
-    #function that decides income based on the type of technology
-    def income_generation(self): 
-        #print("Generating income")
+    #function that records income and technology applied for timestep
+    def record_income(self): 
+        
         f = []
         for i in TechTable.keys(): #in the end, they may each need their own tech table
             entry = self.α * self.k**TechTable[i][0] - TechTable[i][1]
             f.append(entry)
+            #print(f"{entry} from {self.α}, {self.k} {TechTable[i][0]}, and {TechTable[i][1]}" )    
     
-        
+        if self.unique_id in problemAgents:
+
+            print(f)
 
         #VMG a technology is chosen based on maximizing income
-        income = max(f)
-        tec = f.index(income)
+        self.income = max(f)
+        self.tec = f.index(self.income)
 
-        γ = TechTableArray[tec][0]
-        tec_cost = TechTableArray[tec][1]
-
-        return income,tec,γ,tec_cost
+        #self.γ = TechTableArray[self.tec][0]
+        #self.tec_cost = TechTableArray[self.tec][1]
         
-            
+
+        
+    def initialize_consumption(self):
+        print(f'\nInitializing agent {self.unique_id}')
+        self.consum, self.i_a, self.m =which_bellman(self)
+        
     
-    #function that updates the capital and consumption for the next time step    
-    def update_income(self):
-        print(f"Updating income and consumption of agent {self.unique_id}")
-        self.k, self.consum = calculate_next_k_and_c(self.k,self.consum,self.θ,𝛿,self.σ,self.α)
+    #function that updates the capital, consumption, investment, and theta multiplier for the next time step    
+    def update_capital(self):
+        if self.unique_id in problemAgents:
+            print(f"\nUpdating capital of agent {self.unique_id} at time step {model.time}")
+        self.k = calculate_next_k(self)
+
+    def update_consumption(self):
+        if self.unique_id in problemAgents:
+            print(f"\nUpdating consumption of agent {self.unique_id} at time step {model.time}")
+        self.consum, self.i_a, self.m=which_bellman(self)
         
     
     #finding neighbor nodes for the purpose of making an edge/connection
@@ -357,7 +388,8 @@ class MoneyAgent(Agent):
         return neighbors
     
      #function used to trade/communicate     
-    def give_money(self): 
+    def trade_money(self): 
+        self.money_traded=0
         b = self.model.b
         a = self.model.a
         neighbors = self.neighbors()
@@ -368,19 +400,20 @@ class MoneyAgent(Agent):
                 other = self.random.choice(neighbors)  
             w = self.model.G[self.unique_id][other.unique_id]['weight'] 
             if(w >= random.random()): 
-                xi = self.income
-                xj = other.income
-                delta_income = (1-self.lamda)*(xi - epsilon*(xi + xj))
-                xi_new = xi - delta_income
-                xj_new = xj + delta_income
-                other.income = xj_new
-                self.income = xi_new
+                xi = self.k
+                xj = other.k
+                self.money_traded = epsilon * ((1-self.λ) * self.k + (1-other.λ) * other.k)
+                delta_money = (1-self.λ) * self.k - epsilon * ((1-self.λ) * self.k + (1-other.λ) * other.k)
+                self.k = xi - delta_money
+                other.k = xj + delta_money
                 for neighbor in neighbors:
                     self.model.G[self.unique_id][neighbor.unique_id]['weight'] = Edge_Weight(self,neighbor,b, a)
                 other_neighbors = other.neighbors()
                 for neighbor in other_neighbors:
                     if(neighbor.unique_id != other.unique_id):
                         self.model.G[other.unique_id][neighbor.unique_id]['weight'] = Edge_Weight(other,neighbor,b, a)
+            if self.unique_id in problemAgents:
+                print(f"Money put up for trade by agent {self.unique_id} with agent {other.unique_id} for timestep {model.time} is {self.money_traded}")
 
     def update_theta(self):
         #print(f'old = {self.θ}')
@@ -483,15 +516,21 @@ class MoneyAgent(Agent):
                 self.model.G.remove_edge(node1,node2)
         #print('deletion done')
                     
-    def step(self):
+    def stageA(self):
         #if(self.k > 0):
-        self.update_income()
+        self.update_capital()
+
+    def stageB(self):
+        self.trade_money()
+
+    def stageC(self):
+        self.record_income()
+        self.update_consumption()
         self.update_theta()
-        self.give_money()
         #self.LocalAttachment_v1()
         self.LocalAttachment_v2()
         self.Link_Deletion()
-        self.income_generation() 
+     
         
         
         
@@ -510,10 +549,10 @@ class BoltzmannWealthModelNetwork(Model):
         self.G = nx.barabasi_albert_graph(n=N, m = 1)
         nx.set_edge_attributes(self.G, 1, 'weight') #setting all initial edges with a weight of 1
         self.nodes = np.linspace(0,N-1,N, dtype = 'int') #to keep track of the N nodes   
-        
-        self.schedule = RandomActivation(self)
-        self.datacollector = DataCollector(model_reporters = {"Gini": 'gini'},agent_reporters={"k_t":'k','income':'income',
-                                           'Fronts':'fronts', 'consumption':'consum','lamda':'lamda','alpha':'α', 'technology':'tec' })       
+        stage_list=["stageA","stageB","stageC"]
+        self.schedule = StagedActivation(self,stage_list,shuffle=True)
+        self.datacollector = DataCollector(model_reporters = {"Gini": 'gini', "globe_theta":'globe_theta'},agent_reporters={"k_t":'k','income':'income',
+                                           'Fronts':'fronts', 'consumption':'consum','lambda':'λ','alpha':'α', 'percieved_theta':'θ', 'technology':'tec', "i_a":"i_a", "money_traded":"money_traded"})       
         for i, node in enumerate(self.G.nodes()):
             agent = MoneyAgent(i, self)
             self.schedule.add(agent)
@@ -545,7 +584,16 @@ class BoltzmannWealthModelNetwork(Model):
         x = sorted(agent_wealths)
         B = sum(xi * (self.N - i) for i, xi in enumerate(x)) / (self.N * sum(x))
         return 1 + (1 / self.N) - 2 * B
-    
+    '''
+    def stepA(self):
+        self.schedule.stepA()
+    def stepB(self):
+        self.schedule.stepB()
+    def stepC(self):
+        self.schedule.stepC()
+        # collect data
+        self.datacollector.collect(self)
+    ''' 
     def step(self):
         self.schedule.step()
         # collect data
@@ -553,15 +601,18 @@ class BoltzmannWealthModelNetwork(Model):
 
     def run_model(self, n):
         for i in tqdm(range(n)):
+
             #print("Step:", i+1)
             self.time = i+1
+            self.globe_theta = global_θ[self.time]
             self.step()
             self.Global_Attachment()
             self.gini = self.compute_gini()
             
             
-N =100
-steps = 50
+            
+N =500
+steps = 125
 b = 35
 a = 0.69
 alpha = np.random.normal(loc = 1.08, scale = 0.074, size = N) 
@@ -573,5 +624,5 @@ model.run_model(steps)
 model_df = model.datacollector.get_model_vars_dataframe()
 agent_df = model.datacollector.get_agent_vars_dataframe()
 agent_df.reset_index(level=1, inplace = True)
-agent_df.to_csv("{}Agents_{}StepsScipyV3.csv".format(N,steps))
-model_df.to_csv("{}Agents_{}StepsScipyV3.csv".format(N,steps))
+agent_df.to_csv("{}Agents_{}StepsScipyV6.csv".format(N,steps))
+model_df.to_csv("{}Agents_{}StepsScipyV6model.csv".format(N,steps))
