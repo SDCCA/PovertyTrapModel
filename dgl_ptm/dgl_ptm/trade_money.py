@@ -26,7 +26,7 @@ def trade_money(agent_graph, method: str):
     TODO: Rename variables as per Thijs' updates on notebook
     """
     # Calculating disposable wealth
-    agent_graph.ndata['disp_wealth'] = agent_graph.ndata['lambda']*agent_graph.ndata['k']
+    agent_graph.ndata['disp_wealth'] = agent_graph.ndata['lambda']*agent_graph.ndata['wealth']
 
     # Transfer of wealth
     if method == 'weighted_transfer':
@@ -34,7 +34,7 @@ def trade_money(agent_graph, method: str):
     elif method == 'singular_transfer':
         _singular_transfer(agent_graph)
     else:
-        raise ValueError("Incorrect method received. \
+        raise NotImplementedError("Incorrect method received. \
                          Method needs to be either 'weighted_transfer' or 'singular_transfer'")
     
 def _weighted_transfer(agent_graph):
@@ -44,7 +44,7 @@ def _weighted_transfer(agent_graph):
     """
 
     # Sum all incoming weights
-    agent_graph.ndata['tot_wgt'] = torch.zeros(g.num_nodes(),1)
+    agent_graph.ndata['tot_wgt'] = torch.zeros(agent_graph.num_nodes(),1)
     agent_graph.update_all(fn.u_add_e('tot_wgt','w','tot_wgt'), fn.sum('tot_wgt', 'tot_wgt'))
 
     # Calculating outgoing weight %s
