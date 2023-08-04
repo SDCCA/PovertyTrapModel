@@ -3,8 +3,6 @@ import torch
 import dgl 
 import dgl.function as fn
 
-os.environ["DGLBACKEND"] = "pytorch"
-
 def trade_money(agent_graph, method: str):
     """ Trades money between the different connected agents based on 
         wealth (k) and savings propensity (lambda). 
