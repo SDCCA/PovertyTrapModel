@@ -3,7 +3,8 @@ import torch
 
 def link_deletion(agent_graph, del_prob: float):
     '''
-        link_deletion - Randomly deletes links between agents upto a deletion probablity 'del_prob'
+        link_deletion - deletes links between agents with a deletion probability 'del_prob' 
+                        by sampling against a random uniform distribution.
 
         Args:
             agent_graph: DGLGraph with agent nodes and edges connecting agents
