@@ -46,8 +46,7 @@ def _node_property_collector(agent_graph, npath, ndata, mode):
         raise NotImplementedError("Data collection currently only implemented for pytorch backend")
         
 
-def _edge_property_collector(agent_graph, epath, edata, timestep, mode):
-    # TODO: This function does not work currently due to changing n_edges dimension. 
+def _edge_property_collector(agent_graph, epath, edata, timestep, mode): 
     if os.environ["DGLBACKEND"] == "pytorch":
         if mode == 'xarray':
             edge_data_instance = xr.Dataset(coords=dict(
