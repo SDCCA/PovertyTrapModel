@@ -5,6 +5,15 @@ import torch
 from dgl_ptm.network.network_creation import network_creation
 
 def sample_distribution_tensor(type, distParameters, nSamples, round=False, decimals=None):
+    """
+    create and return samples from different distributions
+
+    :param type: Type of distribution to sample
+    :param distParameters: array of parameters as required/supported by requested distribution type
+    :param nSamples: number of samples to return (as 1d tensor)
+    :param round: optional, whether the samples are to be rounded
+    :param decimals: optional, required if round is specified. decimla olaces to round to
+    """
     if type == 'uniform':
         dist = torch.distributions.uniform.Uniform(torch.tensor(distParameters[0]),torch.tensor(distParameters[1])).sample(torch.tensor([nSamples]))
     elif type == 'normal':
@@ -15,7 +24,10 @@ def sample_distribution_tensor(type, distParameters, nSamples, round=False, deci
         raise NotImplementedError('Currently only uniform, normal and bernoulli distributions are supported')
 
     if round:
-        return torch.round(dist,decimals=decimals)
+        if decimals == None:
+            raise ValueError('rounding requires decimals of rounding accuracy to be specified')
+        else:
+            return torch.round(dist,decimals=decimals)
     else:
         return dist
 
@@ -78,10 +90,12 @@ class PovertyTrapModel(Model):
 
     def set_model_parameters(self,*,parameterFilePath=None, default=True, **kwargs):
         """
-        Load or set model parameters
+        Load (TODO) or set model parameters
 
         :param parameterFlePath: optional, path to restore file (TODO)
-        :param 
+        :param default: Specify whether default values should be used (True;default)
+        :param **kwargs: flexible passing of mode parameters. Only those supported by the model are accpted.
+                         If parameters are passed, non-specifed parameters will be set with defaults.
 
         """
         if parameterFilePath != None:
@@ -102,18 +116,26 @@ class PovertyTrapModel(Model):
                         else:
                             raise ValueError(f'Specified parameter {kwpar} is not supported')
                     for modelpar in modelpars:
-                        if (modelpar not in kwpars) and (modelpar != '_model_identifier'):
+                        if (modelpar not in kwpars) and (modelpar not in ['_model_identifier','model_graph']):
                             self.__dict__[modelpar] = self.default_model_parameters[modelpar]
                 else:
                     raise ValueError('default model has not been selected, but no model parameters have been supplied')
 
 
     def create_network(self):
+        """
+        Create intial network connecting agents. Makes use of intial graph type specified as model parameter
+        """
 
         agent_graph = network_creation(self.number_agents, self.initial_graph_type)
         self.model_graph = agent_graph
 
     def initialize_agent_properties(self):
+        """
+        initialize and assign agent properties. Note: agents are represented as nodes of the model graph.
+        Values are initialized as tensors of length corresponding to number of agents, with vaues subsequently
+        being assigned to the nodes.
+        """
         agentsCapital = self._initialize_agents_capital()
         agentsAlpha = self._initialize_agents_alpha()
         agentsLam =  self._initialize_agents_lam()
@@ -129,22 +151,39 @@ class PovertyTrapModel(Model):
         self.model_graph.ndata['cost'] = agentsCost
 
     def _initialize_agents_capital(self):
+        """
+        Initialize agents captial as a 1d tensor sampled from the specified intial capita distribution
+        """
         agentsCapital = sample_distribution_tensor(self.capital_dist['type'],self.capital_dist['parameters'],self.number_agents,round=self.capital_dist['round'],decimals=self.capital_dist['decimals'])
         return agentsCapital
 
     def _initialize_agents_alpha(self):
+        """
+        Initialize agents alpha as a 1d tensor sampled from the specified intial alpha distribution
+        """
         agentsAlpha = sample_distribution_tensor(self.alpha_dist['type'],self.alpha_dist['parameters'],self.number_agents,round=self.alpha_dist['round'],decimals=self.alpha_dist['decimals'])
         return agentsAlpha
 
     def _initialize_agents_lam(self):
+        """
+        Initialize agents lambda as a 1d tensor sampled from the specified intial lambda distribution
+        """
         agentsLam = sample_distribution_tensor(self.lam_dist['type'],self.lam_dist['parameters'],self.number_agents,round=self.lam_dist['round'],decimals=self.lam_dist['decimals'])
         return agentsLam
 
     def _initialize_agents_sigma(self):
+        """
+        Initialize agents sigma as a 1d tensor 
+        """
         agentsSigma = torch.ones(self.number_agents)*self.sigma
         return agentsSigma
 
     def _initialize_agents_tec(self):
+        """
+        Initialize the agents technology level distribution as 1d tensor sampled from the specified intial technology level distribution.
+        Initialize agents gamma and cost distributions according to their tec level and the spefied initial gamma and cost
+        values associated with that tech level
+        """
         agentsTecLevel = sample_distribution_tensor(self.tec_dist['type'],self.tec_dist['parameters'],self.number_agents,round=self.tec_dist['round'],decimals=self.tec_dist['decimals'])
         agentsGamma = torch.zeros(self.number_agents)
         agentsCost = torch.zeros(self.number_agents)
