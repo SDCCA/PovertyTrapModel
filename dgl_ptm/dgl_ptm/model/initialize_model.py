@@ -142,13 +142,16 @@ class PovertyTrapModel(Model):
         agentsSigma = self._initialize_agents_sigma()
         agentsTecLevel, agentsGamma, agentsCost = self._initialize_agents_tec()
 
-        self.model_graph.ndata['k'] = agentsCapital
-        self.model_graph.ndata['alpha'] = agentsAlpha
-        self.model_graph.ndata['lambda'] = agentsLam
-        self.model_graph.ndata['sigma'] = agentsSigma
-        self.model_graph.ndata['tec'] = agentsTecLevel
-        self.model_graph.ndata['gamma'] = agentsGamma
-        self.model_graph.ndata['cost'] = agentsCost
+        if isinstance(self.model_graph,dgl.DGLgraph):
+            self.model_graph.ndata['k'] = agentsCapital
+            self.model_graph.ndata['alpha'] = agentsAlpha
+            self.model_graph.ndata['lambda'] = agentsLam
+            self.model_graph.ndata['sigma'] = agentsSigma
+            self.model_graph.ndata['tec'] = agentsTecLevel
+            self.model_graph.ndata['gamma'] = agentsGamma
+            self.model_graph.ndata['cost'] = agentsCost
+        else:
+            raise RuntimeError('model graph must be a defined DGLgraph object. Consder running `create_network` before initializing agent properties')
 
     def _initialize_agents_capital(self):
         """
