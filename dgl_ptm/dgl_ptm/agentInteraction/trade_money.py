@@ -54,7 +54,7 @@ def _weighted_transfer(agent_graph):
     agent_graph.apply_edges(fn.e_mul_u('per_wgt','disp_wealth','trfr_wealth'))
 
     # Sum total income from wealth exchange
-    agent_graph.update_all(fn.v_add_e('zeros','trfr_wealth','delta_inc'), fn.sum('delta_inc', 'delta_inc'))
+    agent_graph.update_all(fn.v_add_e('zeros','trfr_wealth','net_trade'), fn.sum('net_trade', 'net_trade'))
 
 def _singular_transfer(agent_graph):
     """
@@ -66,8 +66,8 @@ def _singular_transfer(agent_graph):
     graph_subset = dgl.sampling.sample_neighbors(agent_graph, agent_graph.nodes(), 1, edge_dir='out', copy_ndata = True)
     
     # Calculate incoming wealth for each agent in subgraph
-    graph_subset.ndata['delta_inc'] = torch.zeros(agent_graph.num_nodes(),1)
-    graph_subset.update_all(fn.u_add_v('disp_wealth','zeros','delta_inc'), fn.sum('delta_inc', 'delta_inc'))
+    graph_subset.ndata['net_trade'] = torch.zeros(agent_graph.num_nodes(),1)
+    graph_subset.update_all(fn.u_add_v('disp_wealth','zeros','net_trade'), fn.sum('net_trade', 'net_trade'))
 
     # Update wealth delta in agent graph
-    agent_graph.ndata['delta_inc'] = graph_subset.ndata['delta_inc']
+    agent_graph.ndata['net_trade'] = graph_subset.ndata['net_trade']
