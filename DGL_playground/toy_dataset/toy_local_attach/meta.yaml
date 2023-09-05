@@ -1,5 +1,0 @@
-dataset_name: toy_local_attach
-edge_data:
-- file_name: edges.csv
-node_data:
-- file_name: nodes.csv
