@@ -2,7 +2,7 @@ import xarray as xr
 import dgl
 from pathlib import Path
 
-def data_collection(agent_graph, npath='./agent_data', epath='./edge_data', ndata = ['all'], edata = ['all'], timestep, mode = 'xarray'):
+def data_collection(agent_graph, timestep, npath='./agent_data', epath='./edge_data', ndata = ['all'], edata = ['all'], mode = 'xarray'):
     ''' 
         data_collection - collects data from agents and edges for each time-step of the model
 
