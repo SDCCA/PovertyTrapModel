@@ -122,6 +122,13 @@ class PovertyTrapModel(Model):
                     raise ValueError('default model has not been selected, but no model parameters have been supplied')
 
 
+    def initialize_model(self):
+        """
+        convenience fucntion to create network and initiliize agent properties in correct order, thereby initializing a model
+        """
+        self.create_network()
+        self.initialize_agent_properties()
+
     def create_network(self):
         """
         Create intial network connecting agents. Makes use of intial graph type specified as model parameter
