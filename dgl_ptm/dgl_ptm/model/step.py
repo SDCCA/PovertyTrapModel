@@ -3,12 +3,14 @@
 
 # step - time-stepping for the poverty-trap model
 
-from dgl_ptm.agentInteraction import trade_money
-from dgl_ptm.network import local_attachment, link_deletion, global_attachment
-from dgl_ptm.agent import agent_update
-from dgl_ptm.model import data_collection
+from dgl_ptm.agentInteraction.trade_money import trade_money
+from dgl_ptm.network.local_attachment import local_attachment 
+from dgl_ptm.network.link_deletion import link_deletion 
+from dgl_ptm.network.global_attachment import global_attachment
+from dgl_ptm.agent.agent_update import agent_update
+from dgl_ptm.model.data_collection import data_collection
 
-def step(agent_graph, timestep, params):
+def ptm_step(agent_graph, timestep, params):
     '''
         step - time-stepping module for the poverty-trap model
 

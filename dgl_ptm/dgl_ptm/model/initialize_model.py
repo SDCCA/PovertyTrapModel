@@ -3,6 +3,8 @@ import networkx as nx
 import torch
 
 from dgl_ptm.network.network_creation import network_creation
+from dgl_ptm.model.step import ptm_step
+
 
 def sample_distribution_tensor(type, distParameters, nSamples, round=False, decimals=None):
     """
@@ -42,6 +44,12 @@ class Model(object):
         
     def create_network(self):
         raise NotImplementedError('network creaion is not implemented for this class.')
+    
+    def step(self):
+        raise NotImplementedError('step function is not implemented for this class.')
+    
+    def run(self):
+        raise NotImplementedError('run method is not implemented for this class.')
 
 class PovertyTrapModel(Model):
     """
@@ -52,14 +60,17 @@ class PovertyTrapModel(Model):
     #default values as class variable 
     default_model_parameters = {'number_agents': 100 , 
     'gamma_vals':torch.tensor([0.3,0.45]) , 
-    'sigma': torch.tensor(0.5), 
+    'sigma': torch.tensor(0.5),
     'cost_vals': torch.tensor([0.,0.45]) , 
     'tec_levels': torch.tensor([0,1]), 
     'tec_dist': {'type':'bernoulli','parameters':[0.5,None],'round':False,'decimals':None}, 
     'capital_dist': {'type':'uniform','parameters':[0.1,10.],'round':False,'decimals':None}, 
     'alpha_dist': {'type':'normal','parameters':[1.08,0.074],'round':False,'decimals':None},
     'lam_dist': {'type':'uniform','parameters':[0.1,0.9],'round':True,'decimals':1},
-    'initial_graph_type': 'barabasi-albert'}
+    'initial_graph_type': 'barabasi-albert',
+    'step_count':0,
+    'step_target':20,
+    'steering_parameters':{'npath':'./agent_data','epath':'./edge_data', 'ndata':['all'],'edata':['all'],'mode':'xarray','wealth_method':'weighted_transfer','del_prob':0.05,'ratio':0.1}}
 
     def __init__(self,*, model_identifier=None, restart=False, savestate=None):
         """
@@ -87,6 +98,9 @@ class PovertyTrapModel(Model):
             self.lam_dist = None 
             self.initial_graph_type = None
             self.model_graph = None
+            self.step_count = None
+            self.step_target = None
+            self.steering_parameters = None
 
     def set_model_parameters(self,*,parameterFilePath=None, default=True, **kwargs):
         """
@@ -149,7 +163,7 @@ class PovertyTrapModel(Model):
         agentsSigma = self._initialize_agents_sigma()
         agentsTecLevel, agentsGamma, agentsCost = self._initialize_agents_tec()
 
-        if isinstance(self.model_graph,dgl.DGLgraph):
+        if isinstance(self.model_graph,dgl.DGLGraph):
             self.model_graph.ndata['k'] = agentsCapital
             self.model_graph.ndata['alpha'] = agentsAlpha
             self.model_graph.ndata['lambda'] = agentsLam
@@ -202,3 +216,17 @@ class PovertyTrapModel(Model):
             agentsGamma[tec_mask] = self.gamma_vals[i]
             agentsCost[tec_mask] = self.cost_vals[i]   
         return agentsTecLevel, agentsGamma, agentsCost
+
+    def step(self):
+        try:
+            ptm_step(self.model_graph,self.step_count,self.steering_parameters)
+            self.step_count +=1
+        except:
+            #TODO add model dump here. Alsao check againstt previous save to avoid overwriting
+            raise RuntimeError(f'execution of step failed for step {self.step_count}')
+
+
+    def run(self):
+        while self.step_count <= self.step_target:
+            print(f'performing step {self.step_count} of {self.step_target}')
+            self.step()
