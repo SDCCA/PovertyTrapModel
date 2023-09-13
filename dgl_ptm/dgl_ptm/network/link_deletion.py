@@ -13,7 +13,7 @@ def link_deletion(agent_graph, del_prob: float):
         Output:
             agent_graph: Updated agent_graph with reduced edges based on 'del_prob'
     '''
-    agent_graph.remove_edges(_edgeids_2_delete(agent_graph))
+    agent_graph.remove_edges(_edgeids_2_delete(agent_graph, del_prob))
 
 def _edgeids_2_delete(agent_graph, del_prob: float):
     '''

@@ -4,6 +4,7 @@ import torch
 
 from dgl_ptm.network.network_creation import network_creation
 from dgl_ptm.model.step import ptm_step
+from dgl_ptm.agentInteraction.weight_update import weight_update
 
 
 def sample_distribution_tensor(type, distParameters, nSamples, round=False, decimals=None):
@@ -70,7 +71,7 @@ class PovertyTrapModel(Model):
     'initial_graph_type': 'barabasi-albert',
     'step_count':0,
     'step_target':20,
-    'steering_parameters':{'npath':'./agent_data','epath':'./edge_data', 'ndata':['all'],'edata':['all'],'mode':'xarray','wealth_method':'weighted_transfer','del_prob':0.05,'ratio':0.1}}
+    'steering_parameters':{'npath':'./agent_data.zarr','epath':'./edge_data', 'ndata':['all'],'edata':['all'],'mode':'xarray','wealth_method':'weighted_transfer','del_prob':0.05,'ratio':0.1,'weight_a':0.69,'weight_b':35}}
 
     def __init__(self,*, model_identifier=None, restart=False, savestate=None):
         """
@@ -142,6 +143,7 @@ class PovertyTrapModel(Model):
         """
         self.create_network()
         self.initialize_agent_properties()
+        weight_update(self.model_graph, self.steering_parameters['weight_a'], self.steering_parameters['weight_b'])
 
     def create_network(self):
         """
@@ -164,13 +166,15 @@ class PovertyTrapModel(Model):
         agentsTecLevel, agentsGamma, agentsCost = self._initialize_agents_tec()
 
         if isinstance(self.model_graph,dgl.DGLGraph):
-            self.model_graph.ndata['k'] = agentsCapital
+            self.model_graph.ndata['wealth'] = agentsCapital
             self.model_graph.ndata['alpha'] = agentsAlpha
             self.model_graph.ndata['lambda'] = agentsLam
             self.model_graph.ndata['sigma'] = agentsSigma
             self.model_graph.ndata['tec'] = agentsTecLevel
             self.model_graph.ndata['gamma'] = agentsGamma
             self.model_graph.ndata['cost'] = agentsCost
+            self.model_graph.ndata['zeros'] = torch.zeros(self.model_graph.num_nodes())
+            self.model_graph.ndata['ones'] = torch.ones(self.model_graph.num_nodes())
         else:
             raise RuntimeError('model graph must be a defined DGLgraph object. Consder running `create_network` before initializing agent properties')
 

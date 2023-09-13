@@ -8,4 +8,4 @@ def wealth_consumption(model_graph, method='pseudo_consumption'):
     
 
 def _pseudo_wealth_consumption(model_graph):
-    model_graph.ndata['wealth_consumption'] = model_graph.ndata['k']*1./3.
+    model_graph.ndata['wealth_consumption'] = model_graph.ndata['wealth']*1./3.
