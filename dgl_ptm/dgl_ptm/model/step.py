@@ -9,6 +9,7 @@ from dgl_ptm.network.link_deletion import link_deletion
 from dgl_ptm.network.global_attachment import global_attachment
 from dgl_ptm.agent.agent_update import agent_update
 from dgl_ptm.model.data_collection import data_collection
+from dgl_ptm.agentInteraction.weight_update import weight_update
 
 def ptm_step(agent_graph, timestep, params):
     '''
@@ -27,12 +28,15 @@ def ptm_step(agent_graph, timestep, params):
     trade_money(agent_graph, method = params['wealth_method'])
     
     #Link/edge manipulation
-    local_attachment(agent_graph)
+    local_attachment(agent_graph, n_FoF_links = 1, edge_prop = 'weight', p_attach=1.  )
     link_deletion(agent_graph, del_prob = params['del_prob'])
     global_attachment(agent_graph, ratio = params['ratio'])
     
     #Update agent states
     agent_update(agent_graph)
+
+    #Weight update
+    weight_update(agent_graph, a = params['weight_a'], b = params['weight_b'])
 
     #Data collection and storage
     data_collection(agent_graph, timestep = timestep, npath = params['npath'], epath = params['epath'], ndata = params['ndata'], 
