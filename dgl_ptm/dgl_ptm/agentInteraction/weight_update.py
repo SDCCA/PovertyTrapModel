@@ -14,4 +14,4 @@ def weight_update(agent_graph, a, b):
     """
     agent_graph.edata['weight'] = torch.rand(agent_graph.num_edges(),1)
     agent_graph.apply_edges(fn.u_sub_v('wealth','wealth','wealth_diff'))
-    agent_graph.edata['weight'] = 1./(1. + np.exp(a*agent_graph.edata['wealth_diff']-b))
+    agent_graph.edata['weight'] = 1./(1. + np.exp(a*(agent_graph.edata['wealth_diff']-b)))
