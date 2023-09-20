@@ -5,88 +5,146 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from tqdm.notebook import tqdm #this was altered to accomodate new requirements
+from tqdm import tqdm 
 import seaborn as sns
 import networkx as nx
-import os, sys
+import os#, sys
 from itertools import product
 import math
-import statistics
-import cmath
+#import statistics
+#import cmath
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
 from scipy.optimize import basinhopping
+from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
+import datetime
+import atexit
 
 
 
 '''VMG notes: 
-- I have not thought about why link_deletion varies from the notebook version
 
-- Due to version differences, there are now problems with random choice 
-(see https://github.com/python/cpython/issues/100805)
-because of this, I have changed all instances of random.choice(self.model.nodes) and random.choice(self.nodes)
-to random.choice(list(self.model.nodes)) and random.choice(list(self.nodes)), respectively.
-There should be a better way, but until the network mechanisms have been finalized, 
-I think this will serve as a sufficient patch.
+Version 10 notes:
+FinalModelScipyV10 is developed from FinalModelScipyV9.py
+In this version, some unused elements have been removed.
+This version also accepts variables from the command line (with default
+being values used in earlier versions).
 
--The progress bar is not functioning, perhaps because of my tqdm import edit.
-Updates:
--Sigma, risk averseness for the isoelastic utility function, is now heterogeneous,
- but this needs a justifiable range and also should never include 1.
--Funcitionality for any number of income technologies has been added.
--Replaced lambda <1 while loop with the upper limit of 0.949
+Version 10 Outline:
+Read in arguments.
+Randomly select agent attributes (or import specific agents) and 
+ dynamic model parameters.
+Write arguments and initial agent data to csv files.
+Loop through initialization agent by agent: 
+    Assign attributes k #initial stock of wealth, λ-savings propensity,
+     α-human capital, σ-risk averseness, and θ-perception of shock.
+    (currently no trading at step 0)
+    Record generation function technology and resulting income.
+    Calculate most advantageous consumption and investment in 
+     adaptation using Bellman equation optimization.
+DataCollector collects initial step.
+Loop through each model step:
+    Loop through each agent:
+        Update capital based on consumption and adaptation investment 
+         optimized in previous time step.
+    Loop through each agent giving the option to trade with any 
+     neighbors (one opportunity per neighbor pair).
+    Loop through each agent:
+        Record generation function technology and resulting income.
+        Update percieved theta to include observation of global (true) 
+         theta at current time.
+        Calculate most advantageous consumption and investment in 
+         adaptation using Bellman equation optimization.
+        Any agent has an opportunity for local attachment or link 
+         deletion.
+    Global attachment is an opportunity for a single attachment to form
+     a randomly selected pair of unconnected agents.
+    The list of neighbor pairs is refreshed.
+    DataCollector collects step data.
+
+Write relevant model and agent data to csv files.
 
 
 
-Version 5 notes:
-FinalModelScipyV5 is developed from FinalModelScipyV4.py
-In this version, adaptation options are introduced. For each adaptation cost, 
-there is a corresponding theta difference multiplier. Perfect knowledge of all 
-options and their efficacies is assumed. 
-The current optimization chooses the maximum value from the bellman equation 
-solutions for each available adaptation option.
+
 
 
 
 '''
+starttime  = datetime.datetime.now().strftime('%Y-%m-%d_%H_%M_%S') 
+# Parse command line arguments
+parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+parser.add_argument("--no-trading", dest="trading" ,action="store_false", 
+                    help="Turn off trading functionality; by default\
+                         trading is on.")
+parser.add_argument("-s", "--seed", default=42, type=int, 
+                    help="Seed for random and np.random generation")
+parser.add_argument("-d", "--depreciation", default=0.08, type=float, 
+                    help="Depreciation for calculation of k_t+1,\
+                         default 0.08")
+parser.add_argument("-af", "--agentfile", default=False,type=str, 
+                    help="Option to supply csv file (filename.csv) with\
+                         custom agents. Column titles must be 'AgentID',\
+                            'Alpha','k_0','Sigma','Lambda'. Number of\
+                                 agents will be detected automatically.")
+parser.add_argument("-ts", "--timesteps", default=100,type=int, 
+                    help="Number of time steps, default 100")
+parser.add_argument("-fs", "--filesuffix",default=starttime, type=str, 
+                    help="A specific suffix can be specified as part of\
+                         the output filenames. To include a timestamp, use\
+                             \"{args['starttime']}\" in the suffix.")
+parser.add_argument("-n", "--agentN",default=500, type=int, 
+                    help="Number of agents. Not necessary to specify N if\
+                         using file of custom agents.")
+parser.add_argument("-a", "--homalpha",default=0.69, type=float, 
+                    help="Alpha used in homophily calculation. Not to be confused with agent property alpha")
+parser.add_argument("-b", "--homb",default=35, type=float, 
+                    help="Characteristic distance used in homophily calculation.")
 
+args = vars(parser.parse_args())
+print(args)
+trading=args['trading']
+seed = args['seed']
+random.seed(seed)
+np.random.seed(seed)
 
-#0<gamma_L<gamma_H<1
-#gamma_L = 0.3
-#gamma_H = 0.45
-#fixed_cost = 0.45
-#sigma = 1.5
-
-random.seed(42)
-np.random.seed(42)
+if not os.path.exists("Results"):
+    os.makedirs("Results")
 
 g = 1
 p_ga = random.random()#for global attachment
 p_ld = random.random()#for link deletion
 p_delta = 0.3#for local attachment
 
+g_theta_list = [0.1, 0.5, 0.8, 1]
+g_theta_distribution = [0.01 ,0.1, 0.79, 0.1]
+expectation = (np.array(g_theta_list)*np.array(g_theta_distribution)).sum()
+
 # global variables for Bellman equation
-𝛿 = 0.08
-β = 0.95
+𝛿 = args["depreciation"] #depreciation
+β = 0.95 #discount factor
 
 #Debug
-problemAgents=range(500)
+problemAgents=[]#range(500)
 
 
 TechTable = {#contains values for 0:gamma 1:cost 2:theta
-# VMG things get stuck in a while loop if the gamma is less than 0.3 (tried 0.2)
-# not sure yet if/how this will be problematic 
+# VMG things get stuck in a while loop if the gamma is less than 0.3 
+# (tried 0.2) not sure yet if/how this will be problematic 
 # Also important to make sure values are in the correct order
 # i.e. that the threshold between medium and high is at a 
 # higher k than the threshold between low and medium 
 # This can be checked with k_threshold.py
+
     "low":   [0.3,  0   ],
     "medium":[0.35, 0.15],
     "high":  [0.45, 0.65]}
 
 TechTableArray = np.array([[ 0.3,  0 ],[0.35, 0.15],[0.45, 0.65]])
 
-AdapTable = {#contains values for 0:theta 1:cost (for consideration:effort? type? design life?)
+AdapTable = {
+    # contains values for 0:theta 1:cost 
+    # (for consideration:effort? type? design life?)
     "none":   [  0, 0   ],
     "good":   [0.5, 0.25],
     "better": [0.9, 0.45]}
@@ -94,8 +152,9 @@ AdapTable = {#contains values for 0:theta 1:cost (for consideration:effort? type
 AdapTableArray = np.array([[ 0,  0 ],[0.5, 0.25],[0.9, 0.45]])
 
 
-#global function that calculates the weight of the edge, args: the 2 nodes (agent class objects)
-#this is the homophily edge weight formula
+# global function that calculates the weight of the edge, args: 
+# the 2 nodes (agent class objects)
+# this is the homophily edge weight formula
 def Edge_Weight(node1,node2, b, a):
         try:
              weight = 1+math.exp(a*((node1.k-node2.k)-b))
@@ -104,11 +163,10 @@ def Edge_Weight(node1,node2, b, a):
         return 1/weight  
 
 
-
-
 def maximize(g, a, b, args):
     """
-    From: https://python.quantecon.org/optgrowth.html (similar example https://macroeconomics.github.io/Dynamic%20Programming.html#.ZC13-exBy3I)
+    From: https://python.quantecon.org/optgrowth.html (similar example 
+    https://macroeconomics.github.io/Dynamic%20Programming.html#.ZC13-exBy3I)
     Maximize the function g over the interval [a, b].
 
     The maximizer of g on any interval is
@@ -135,16 +193,17 @@ def utility(c, σ, type="isoelastic"):
 
 
 def income_function(k,α): 
-    #print("Generating income")
     f = []
-    for i in TechTable.keys(): #in the end, they may each need their own tech table
+    for i in TechTable.keys(): 
+        #in the end, they may need their own tech tables
         entry = α * k**TechTable[i][0] - TechTable[i][1]
         f.append(entry)
     return max(f)
 
 def adaptation_function(θ,i_a):
     
-    for i in AdapTable.keys(): #in the end, they should have their own adaptation table
+    for i in AdapTable.keys(): 
+        #in the end, they should have their own adaptation tables
         if AdapTable[i][1] <= i_a:
             m = AdapTable[i][0]
         else:
@@ -155,22 +214,18 @@ def adaptation_function(θ,i_a):
 
         
 def calculate_next_k(agentinfo):
+    #formula for k_t+1 is applied at the beginning of each time step 
+    # k_t+1 becomes the new k_t
+    
     k,c,i_a,m = agentinfo.k,agentinfo.consum,agentinfo.i_a,agentinfo.m
-    #print(f"Old k and c {k,c}")
     if agentinfo.unique_id in problemAgents:
         print(f"Calculating using k={k}, global_theta={global_θ[model.time]}, m={m}, c={c}, i_a={i_a}, sigma={agentinfo.σ}, alpha={agentinfo.α}, percieved theta={agentinfo.θ}")
     k_tplus1 = (global_θ[model.time] + m * (1-global_θ[model.time])) * (k - c - i_a + (1-𝛿) * k)
-    #agentinfo.k=k_tplus1
     
     if agentinfo.unique_id in problemAgents:
    
-        print(f"k_t+1 after Calculate={k_tplus1}={agentinfo.k}")
-        
-    #print(f"New k and c {k_tplus1,c_tplus1}\n")
+        print(f"k_t after Calculate={k_tplus1}")
     return k_tplus1
-
-
-
 
 
 
@@ -178,7 +233,7 @@ class BellmanEquation:
      #Adapted from: https://python.quantecon.org/optgrowth.html
     def __init__(self,
                  u,            # utility function
-                 f,            # production function, I think the piecewise function may need to be reestablished here for accuracy, more thought needed
+                 f,            # production function
                  k,            # current state k_t
                  θ,            # given shock factor θ
                  σ,            # risk averseness
@@ -193,14 +248,13 @@ class BellmanEquation:
 
         # Set up grid
         
-        startgrid=np.array([1.0e-7,1,2,3,4,5,6,7,8,9,10,100])
-        #startgrid=np.array([0.001,2,4,6,8,10])
+        startgrid=np.array([1.0e-7,1,2,3,4,5,6,7,8,9,10,k+100])
 
         ind=np.searchsorted(startgrid, k)
-        self.grid=np.concatenate((startgrid[:ind],np.array([k-1.0e-06, k]),startgrid[ind:]))
+        self.grid=np.concatenate((startgrid[:ind],np.array([k*0.99999, k]),
+                                 startgrid[ind:]))
 
         self.grid=self.grid[self.grid>i_a]
-        #self.grid=np.concatenate((startgrid,np.array([k-0.1, k-1.0e-02, k, k+1.0e-02, k+0.1])))
 
         # Identify target state k
         self.index = np.searchsorted(self.grid, k)-1
@@ -212,7 +266,8 @@ class BellmanEquation:
 
         u, f, β, θ, 𝛿, σ, α, i_a, m = self.u, self.f, self.β, self.θ, self.𝛿, self.σ, self.α, self.i_a, self.m
 
-        v = interp1d(self.grid, v_array, bounds_error=False, fill_value="extrapolate")
+        v = interp1d(self.grid, v_array, bounds_error=False, 
+                     fill_value="extrapolate")
         
         return u(c,σ) + β * v((θ + m * (1-θ)) * (f(y,α) - c - i_a + (1 - 𝛿) * y))
 
@@ -220,7 +275,8 @@ class BellmanEquation:
 
 def update_bellman(v, bell):
     """
-    From: https://python.quantecon.org/optgrowth.html (similar example https://macroeconomics.github.io/Dynamic%20Programming.html#.ZC13-exBy3I)
+    From: https://python.quantecon.org/optgrowth.html (similar example
+    https://macroeconomics.github.io/Dynamic%20Programming.html#.ZC13-exBy3I)
     
     The Bellman operator.  Updates the guess of the value function
     and also computes a v-greedy policy.
@@ -234,28 +290,42 @@ def update_bellman(v, bell):
     
     for i in range(len(bell.grid)):
         y = bell.grid[i]
-        # if y <= 1e-8:
-        #     print(f"struggling with {bell.grid} for y={y} for k = {bell.k} and theta={bell.θ}")
         # Maximize RHS of Bellman equation at state y
         
-        c_star, v_max = maximize(bell.value, 1e-8, y-bell.i_a, (y, v))
-        #VMG HELP! is (1) subtracting i_a and (2) omitting an entire section of the grid necessary/correct
+        c_star, v_max = maximize(bell.value, min([1e-8,y*0.00001]), 
+                                 y-bell.i_a, (y, v))
+        #VMG HELP! can anyone check that (1) subtracting i_a and 
+        # (2) omitting any grid values less than i_a 
+        # will not be problematic? The only thing I can come up with
+        # is if i_a is greater than k*0.99999
+        # which_bellman() now accounts for that case. Whole thing 
+        # could use refinement.
+      
         v_new[i] = v_max
         v_greedy[i] = c_star
 
     return v_greedy, v_new
 
 def which_bellman(agentinfo):
+    """
+    Solves bellman for each affordable adaptation option.
+    """
     feasible=[]
     if agentinfo.unique_id in problemAgents:
         print(f" k= {agentinfo.k} passed to which_bellman")
 
     for option in agentinfo.adapt:
-        if option[1]>=agentinfo.k:
+        if option[1]>=agentinfo.k*0.99998:
+            # ensures that the gridpoint
+            # just below k, k*0.99999, is included
             pass
         else:
-            #print(f'working theta = {agentinfo.θ + option[0] * (1-agentinfo.θ)}, i_a= {option[1]}, k= {agentinfo.k}')
-            c,v=solve_bellman(BellmanEquation(u=utility, f=income_function, k=agentinfo.k, θ=agentinfo.θ, σ=agentinfo.σ, α=agentinfo.α, i_a=option[1],m=option[0]))
+            #print(f'working theta = {agentinfo.θ + option[0] *\
+            #  (1-agentinfo.θ)}, i_a= {option[1]}, k= {agentinfo.k}')
+            c,v=solve_bellman(BellmanEquation(u=utility, 
+                              f=income_function, k=agentinfo.k, 
+                              θ=agentinfo.θ, σ=agentinfo.σ, 
+                              α=agentinfo.α, i_a=option[1],m=option[0]))
             feasible.append([v,c,option[1],option[0]])
     if agentinfo.unique_id in problemAgents:
 
@@ -272,7 +342,8 @@ def solve_bellman(bell,
                   max_iter=1000,
                   verbose=False):
     """
-    From: https://python.quantecon.org/optgrowth.html (similar example https://macroeconomics.github.io/Dynamic%20Programming.html#.ZC13-exBy3I)
+    From: https://python.quantecon.org/optgrowth.html (similar example
+    https://macroeconomics.github.io/Dynamic%20Programming.html#.ZC13-exBy3I)
     
     Solve model by iterating with the Bellman operator.
 
@@ -303,19 +374,14 @@ def solve_bellman(bell,
     return v_greedy[bell.index],v[bell.index]
 
 
-
-
-
-
-
 class MoneyAgent(Agent):
     
     def __init__(self, unique_id, model):
         
         super().__init__(unique_id, model)
-        self.k = (capital[unique_id]) #initial stock of wealth
-        self.λ = round(random.uniform(0.1,0.949),1)  #VMG replaced lambda <1 while loop
-        self.α = alpha[unique_id]#human capital 
+        self.k = capital[unique_id] #initial stock of wealth
+        self.λ = lambdas[unique_id] #savings propensity
+        self.α = alphas[unique_id]#human capital 
         self.σ = round(random.uniform(1,1.9),1)#risk averseness
         self.θ = random.uniform(0.1,1) #percieved theta (cannot be zero or the optimizer breaks because k<) maybe one day this can be spatial?
         self.sensitivity = random.uniform(0,1) #factor controlling tractability of an agent's perception of theta 
@@ -330,7 +396,10 @@ class MoneyAgent(Agent):
         self.fronts = 0 #for resetting micawber frontier(s?) 
         self.consum = 0
         self.initialize_consumption()
-        self.money_traded=0
+        self.connections=0 #tracks number of neighbors 
+        self.trades=0 #tracks number of trades per timestep
+        #self.money_traded=0 #tracks money offered up for trade
+        self.net_traded=0 #tracks net gain/loss from trades
         self.model.agents.append(self)
 
         
@@ -351,29 +420,29 @@ class MoneyAgent(Agent):
 
             print(f)
 
-        #VMG a technology is chosen based on maximizing income
+        # a technology is chosen based on maximizing income
         self.income = max(f)
-        self.tec = f.index(self.income)
-
-        #self.γ = TechTableArray[self.tec][0]
-        #self.tec_cost = TechTableArray[self.tec][1]
-        
+        self.tec = f.index(self.income) 
 
         
     def initialize_consumption(self):
-        print(f'\nInitializing agent {self.unique_id}')
+        #print(f'\nInitializing agent {self.unique_id}')
         self.consum, self.i_a, self.m =which_bellman(self)
         
     
-    #function that updates the capital, consumption, investment, and theta multiplier for the next time step    
-    def update_capital(self):
+    def update_capital(self):    # updates the capital, consumption, investment, and theta multiplier for the next time step    
         if self.unique_id in problemAgents:
             print(f"\nUpdating capital of agent {self.unique_id} at time step {model.time}")
         self.k = calculate_next_k(self)
+        self.connections=0
+        self.trades=0
+        self.net_traded=self.k
 
     def update_consumption(self):
         if self.unique_id in problemAgents:
             print(f"\nUpdating consumption of agent {self.unique_id} at time step {model.time}")
+            print(f"current k ={self.k} k after capital update was {self.net_traded}")
+        self.net_traded=self.k-self.net_traded
         self.consum, self.i_a, self.m=which_bellman(self)
         
     
@@ -387,25 +456,44 @@ class MoneyAgent(Agent):
                     neighbors.append(agent)
         return neighbors
     
-     #function used to trade/communicate     
+    #function used to trade/communicate     
     def trade_money(self): 
-        self.money_traded=0
+        if self.unique_id in problemAgents:
+            print(f"{self.unique_id} is starting to trade")
         b = self.model.b
         a = self.model.a
-        neighbors = self.neighbors()
+        neighbor_IDs = []
+        for pair in self.model.trade_partners:
+            if self.unique_id in pair:
+                neighbor=list(pair)
+                neighbor.remove(self.unique_id)
+                if len(neighbor)>0:
+                    neighbor_IDs.append(neighbor[0])
+        neighbors=[]
+        for agent in self.model.agents:
+            if(agent.unique_id in neighbor_IDs):
+                neighbors.append(agent)
         epsilon = random.random()
-        if len(neighbors) > 1 :
-            other = self.random.choice(neighbors)
-            while(other.unique_id == self.unique_id):
-                other = self.random.choice(neighbors)  
-            w = self.model.G[self.unique_id][other.unique_id]['weight'] 
-            if(w >= random.random()): 
+        for i in neighbors:
+            other = i
+            self.connections+=1
+            if(other.unique_id == self.unique_id):
+                continue  
+            w = self.model.G[self.unique_id][other.unique_id]['weight']
+            if self.unique_id in problemAgents:
+                    print(f"Weight of edge is {w} vs {model.min_weight}")
+            delta_money=0 
+            if(w >= model.min_weight):
+                self.trades+=1 
                 xi = self.k
                 xj = other.k
-                self.money_traded = epsilon * ((1-self.λ) * self.k + (1-other.λ) * other.k)
+                #self.money_traded = epsilon * ((1-self.λ) * self.k + (1-other.λ) * other.k)
                 delta_money = (1-self.λ) * self.k - epsilon * ((1-self.λ) * self.k + (1-other.λ) * other.k)
                 self.k = xi - delta_money
                 other.k = xj + delta_money
+                if self.unique_id in problemAgents:
+                    print(f"Removing from trade partners {self.unique_id,other.unique_id}")
+                self.model.trade_partners.remove({self.unique_id,other.unique_id})
                 for neighbor in neighbors:
                     self.model.G[self.unique_id][neighbor.unique_id]['weight'] = Edge_Weight(self,neighbor,b, a)
                 other_neighbors = other.neighbors()
@@ -413,29 +501,12 @@ class MoneyAgent(Agent):
                     if(neighbor.unique_id != other.unique_id):
                         self.model.G[other.unique_id][neighbor.unique_id]['weight'] = Edge_Weight(other,neighbor,b, a)
             if self.unique_id in problemAgents:
-                print(f"Money put up for trade by agent {self.unique_id} with agent {other.unique_id} for timestep {model.time} is {self.money_traded}")
+                print(f"Trade pool between agent {self.unique_id} and agent {other.unique_id} for timestep {model.time} is {delta_money}")
+                print(f"self k = {self.k}   other k = {other.k}")
 
-    def update_theta(self):
-        #print(f'old = {self.θ}')
+    def update_theta(self):#conducted by agent at each time step, the observed theta impacts agent perception of theta
         self.θ=self.θ * (1-self.sensitivity) + global_θ[model.time] * self.sensitivity
-        #print(f'new = {self.θ}')
 
-    def LocalAttachment_v1(self): 
-        b = self.model.b
-        a = self.model.a
-        node1 = random.choice(list(self.model.nodes))
-        node2 = random.choice(list(self.model.nodes))
-        count = 0 #to avoid an infinite loop when all agents have already made links with each other
-        while(self.model.G.has_edge(node1,node2)==True and count <5):
-            node2 = random.choice(list(self.model.nodes))
-            node1 = random.choice(list(self.model.nodes))
-            count +=1
-        for agent in self.model.agents:
-            if(agent.unique_id == node1):
-                node1_a = agent
-            if(agent.unique_id == node2):
-                node2_a = agent
-        self.model.G.add_edge(node1,node2,weight = Edge_Weight(node1_a,node2_a, b, a))
         
         
     #1. select nodes i and j, with a probability proportional to the weight (wij) between them.
@@ -446,57 +517,41 @@ class MoneyAgent(Agent):
     def LocalAttachment_v2(self):
         b = self.model.b
         a = self.model.a
-        #print("LA done")
         links_nodes = list(self.model.G.edges(data= 'weight'))
-        #print('Link nodes=', links_nodes)
         edge_weight_sum = sum(k for i, j,k in links_nodes)
-        #print('Weight sum = ', edge_weight_sum)
         if edge_weight_sum==0:
             print(links_nodes)
 
         edge_weights = []
         for edge in links_nodes:
             edge_weights.append(edge[2])
-        #print('Edge weights = ', edge_weights)
         edge_prob = []
         for edge_w in edge_weights:
             edge_prob.append(edge_w/edge_weight_sum)
-        #print('Edge prob = ', edge_prob)
         arr_pos = [i for i in range(len(links_nodes))]
         pos = np.random.choice(arr_pos, p = edge_prob)
         chosen = links_nodes[pos]
-        #print("Chosen nodes:", chosen[0:2])
         node1 = chosen[0]
         node2 = chosen[1]
         node1_a = next((agent for agent in self.model.agents if agent.unique_id == node1), None)
         node2_a = next((agent for agent in self.model.agents if agent.unique_id == node2), None)
-        #print("Keeping node1 as:", node1)
-        #print("Keeping node2 as:", node2)
-        #finding neighbors of node2
+
         neighbors = [n for n in self.model.G.neighbors(node2)]
-        #print("Neighbors of {} are:{}".format(node2,neighbors))
         if(len(neighbors)>1):
-            #print("Finding 3rd node")
             links_nodes = list(self.model.G.edges(node2, data= 'weight'))
-            #print('Link nodes=', links_nodes)
             edge_weight_sum = sum(k for i, j,k in links_nodes)
-            #print('Weight sum = ', edge_weight_sum)
             edge_weights = []
             for edge in links_nodes:
                 edge_weights.append(edge[2])
-            #print('Edge weights = ', edge_weights)
             edge_prob = []
             for edge_w in edge_weights:
                 edge_prob.append(edge_w/edge_weight_sum)
-            #print('Edge prob = ', edge_prob)
             arr_pos = [i for i in range(len(links_nodes))]
             pos = np.random.choice(arr_pos, p = edge_prob)
             chosen = links_nodes[pos]
-            #print("Chosen nodes:", chosen[0:2])
             for node in chosen[0:2]: #because the 3rd element is weight
                 if(node!= node2):
                     node3 = node
-                    #print('3rd node = ', node3)
                     if(self.model.G.has_edge(node1,node3)==False and random.random()>p_delta):
                         node3_a = next((agent for agent in self.model.agents if agent.unique_id == node3), None)
                         self.model.G.add_edge(node1,node3,weight = Edge_Weight(node1_a,node3_a, b, a))
@@ -504,7 +559,6 @@ class MoneyAgent(Agent):
     
    #links are deleted randomly at every time step
     def Link_Deletion(self):
-        #print('Deletion')
         if(random.random()>p_ld):
             node1 = random.choice(list(self.model.nodes))
             node2 = random.choice(list(self.model.nodes))
@@ -514,20 +568,20 @@ class MoneyAgent(Agent):
                 count +=1
             if(count !=5):
                 self.model.G.remove_edge(node1,node2)
-        #print('deletion done')
                     
     def stageA(self):
-        #if(self.k > 0):
         self.update_capital()
 
     def stageB(self):
-        self.trade_money()
+        if trading==True:
+            self.trade_money()
+        if trading==False:
+            pass
 
     def stageC(self):
         self.record_income()
-        self.update_consumption()
         self.update_theta()
-        #self.LocalAttachment_v1()
+        self.update_consumption()
         self.LocalAttachment_v2()
         self.Link_Deletion()
      
@@ -548,11 +602,12 @@ class BoltzmannWealthModelNetwork(Model):
         self.count_GA = 0
         self.G = nx.barabasi_albert_graph(n=N, m = 1)
         nx.set_edge_attributes(self.G, 1, 'weight') #setting all initial edges with a weight of 1
-        self.nodes = np.linspace(0,N-1,N, dtype = 'int') #to keep track of the N nodes   
+        self.nodes = np.linspace(0,N-1,N, dtype = 'int') #to keep track of the N nodes
+        self.trade_partners=[]   
         stage_list=["stageA","stageB","stageC"]
         self.schedule = StagedActivation(self,stage_list,shuffle=True)
-        self.datacollector = DataCollector(model_reporters = {"Gini": 'gini', "globe_theta":'globe_theta'},agent_reporters={"k_t":'k','income':'income',
-                                           'Fronts':'fronts', 'consumption':'consum','lambda':'λ','alpha':'α', 'percieved_theta':'θ', 'technology':'tec', "i_a":"i_a", "money_traded":"money_traded"})       
+        self.datacollector = DataCollector(model_reporters = {"Gini": 'gini', "Global_Theta":'globe_theta',"Trade_Threshold":'min_weight'},agent_reporters={"k_t":'k','income':'income',
+                                           'Fronts':'fronts', 'consumption':'consum','lambda':'λ','alpha':'α', 'percieved_theta':'θ', 'technology':'tec', "i_a":"i_a","connections":"connections","trades":"trades", "net_traded":"net_traded"})       
         for i, node in enumerate(self.G.nodes()):
             agent = MoneyAgent(i, self)
             self.schedule.add(agent)
@@ -578,51 +633,85 @@ class BoltzmannWealthModelNetwork(Model):
                     node2_a = agent
             #a and b are pre-determined, a is the homophily parameter and b is the characteristic distance
             self.G.add_edge(node1,node2,weight =  Edge_Weight(node1_a,node2_a, self.b, self.a))
-        
+
+    def Refresh_Trade(self):
+        #Creates a list of unique connections
+        self.trade_partners=[]
+        for agent in self.G.nodes:
+            neighbor_nodes = list(nx.all_neighbors(self.G,agent))
+            for other in neighbor_nodes:
+                entry={agent,other}
+                if entry not in self.trade_partners:
+                    self.trade_partners.append(entry)
+
     def compute_gini(self):
         agent_wealths = [agent.k for agent in self.schedule.agents]
         x = sorted(agent_wealths)
         B = sum(xi * (self.N - i) for i, xi in enumerate(x)) / (self.N * sum(x))
         return 1 + (1 / self.N) - 2 * B
-    '''
-    def stepA(self):
-        self.schedule.stepA()
-    def stepB(self):
-        self.schedule.stepB()
-    def stepC(self):
-        self.schedule.stepC()
-        # collect data
-        self.datacollector.collect(self)
-    ''' 
-    def step(self):
+
+    def write_data(self):
+        model_df = self.datacollector.get_model_vars_dataframe()
+        agent_df = self.datacollector.get_agent_vars_dataframe()
+        agent_df.reset_index(level=1, inplace = True)
+        agent_df.to_csv(f"Results/ScipyV10_{args['filesuffix']}.csv")
+        model_df.to_csv(f"Results/ScipyV10_{args['filesuffix']}model.csv")
+        print(f"Exiting at model time {model.time}")
+        
+    
+    def step(self):#Model level step
+        # staged activation
         self.schedule.step()
         # collect data
         self.datacollector.collect(self)
 
-    def run_model(self, n):
-        for i in tqdm(range(n)):
-
-            #print("Step:", i+1)
-            self.time = i+1
+    def run_model(self, steps):
+        for i in tqdm(range(1,steps),ascii=True,desc="Progress"):
+            self.time = i
             self.globe_theta = global_θ[self.time]
+            self.min_weight = min_weights[self.time]
             self.step()
             self.Global_Attachment()
+            self.Refresh_Trade()
             self.gini = self.compute_gini()
+        atexit.register(self.write_data)
             
             
             
-N =500
-steps = 125
-b = 35
-a = 0.69
-alpha = np.random.normal(loc = 1.08, scale = 0.074, size = N) 
-capital = np.random.uniform(low = 0.1, high = 10, size = N)
-global_θ = np.random.choice([0.1, 0.5, 0.8, 1], N ,p=[0.01 ,0.1, 0.79, 0.1]).tolist()
+
+steps = args["timesteps"]
+b = args["homalpha"]
+a = args["homb"]
+if args["agentfile"]!=False:
+    custom_agents=pd.read_csv(args["agentfile"],header=0,usecols=["AgentID","Alpha","k_0","Sigma","Lambda"],index_col=0)
+    N = len(custom_agents)
+    alphas = custom_agents["Alpha"] #list of agent alphas, effectively ability/human capital
+    capital = custom_agents["k_0"] #list of agent initial capital amounts
+    sigmas= custom_agents["Sigma"] #list of agent sigmas, effectively risk-averseness
+    lambdas= custom_agents["Lambda"] #list of agent lambdas, effectively savings propensity
+
+else:
+    N = args["agentN"]
+    alphas = np.random.normal(loc = 1.08, scale = 0.074, size = N) #list of agent alphas, effectively ability/human capital
+    capital = np.random.uniform(low = 0.1, high = 10, size = N) #list of agent initial capital amounts
+    sigmas=np.round(np.random.uniform(1,1.9,size=N),1) #list of agent sigmas, effectively risk-averseness
+    lambdas=np.round(np.random.uniform(0.1,0.949,size=N),1) #list of agent lambdas, effectively savings propensity
+
+global_θ = np.random.choice(g_theta_list, steps ,p=g_theta_distribution).tolist() #list of model-level thetas, effectively schedule of system shocks
+min_weights = np.random.random(steps) #threshold referenced at each time step for trades between agent pairs
+initialdf=pd.DataFrame(data={"AgentID":range(N),"Alpha":alphas,"k_0":capital,"Sigma":sigmas,"Lambda":lambdas}).set_index("AgentID")
+
+
+if args["agentfile"]!=False: 
+    if custom_agents.equals(initialdf):
+        print(f"Import of {len(custom_agents)} agents successful.")
+    else:
+        print("Agent import attempted but not successful. Please see formatting guidelines and reattempt.")
+
+with open(f"Results/ScipyV10_{args['filesuffix']}params.txt",'w') as pfile: 
+    pfile.write(str(args))
+initialdf.to_csv(f"Results/ScipyV10_{args['filesuffix']}properties.csv")
 
 model = BoltzmannWealthModelNetwork(b, a, N)
 model.run_model(steps)
-model_df = model.datacollector.get_model_vars_dataframe()
-agent_df = model.datacollector.get_agent_vars_dataframe()
-agent_df.reset_index(level=1, inplace = True)
-agent_df.to_csv("{}Agents_{}StepsScipyV6.csv".format(N,steps))
-model_df.to_csv("{}Agents_{}StepsScipyV6model.csv".format(N,steps))
+
