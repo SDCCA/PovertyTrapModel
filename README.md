@@ -1,4 +1,4 @@
-![image](https://github.com/SDCCA/PovertyTrapModel/assets/112457375/51aea7d8-46b4-4716-b683-169a02d22ec6)# Summary of changes to Main branch:
+# Summary of changes to Main branch:
 
 April 5, 2023 - Made sigma (risk averseness) heterogeneous among agents between an arbitrary range from 0.9 to 1.9; the original value was 1.5.
 
