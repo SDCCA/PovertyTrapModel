@@ -227,6 +227,8 @@ class PovertyTrapModel(Model):
             self.step_count +=1
         except:
             #TODO add model dump here. Alsao check againstt previous save to avoid overwriting
+
+
             raise RuntimeError(f'execution of step failed for step {self.step_count}')
 
 
