@@ -660,7 +660,7 @@ class BoltzmannWealthModelNetwork(Model):
         model_df.to_csv(f"Results/ScipyV10_{args['filesuffix']}model.csv")
         endtime=datetime.datetime.now()
         with open(f"Results/ScipyV10_{args['filesuffix']}params.txt", 'a') as pfile:
-            pfile.write(f"Start Time: {starttime.strftime('%Y-%m-%d %H:%M:%S')}  End Time: {endtime.strftime('%Y-%m-%d %H:%M:%S')}  Elapsed Time= {endtime-starttime}")
+            pfile.write(f"Start Time: {starttime.strftime('%Y-%m-%d %H:%M:%S')}  End Time: {endtime.strftime('%Y-%m-%d %H:%M:%S')}  Elapsed Time: {endtime-starttime}")
         print(f"Exiting at model time {model.time}")
         
     
