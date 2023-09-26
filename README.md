@@ -13,3 +13,5 @@ July 28, 2023 - Added adaptation options housed in AdapTable from which agents c
 September 20, 2023 - Adjusted trade_money() (formerly give_money()) so that agents have an opportunity to trade with all of their neighbors. 
                    - Introduced automatic output file naming and command-line argument options.
 
+September 26, 2023 - Fixed trading for timestep 1.
+                   - Added start, end, and elapsed time to params output file.
