@@ -71,7 +71,7 @@ Write relevant model and agent data to csv files.
 
 
 '''
-starttime  = datetime.datetime.now().strftime('%Y-%m-%d_%H_%M_%S') 
+starttime  = datetime.datetime.now()
 # Parse command line arguments
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument("--no-trading", dest="trading" ,action="store_false", 
@@ -89,7 +89,7 @@ parser.add_argument("-af", "--agentfile", default=False,type=str,
                                  agents will be detected automatically.")
 parser.add_argument("-ts", "--timesteps", default=100,type=int, 
                     help="Number of time steps, default 100")
-parser.add_argument("-fs", "--filesuffix",default=starttime, type=str, 
+parser.add_argument("-fs", "--filesuffix",default=starttime.strftime('%Y-%m-%d_%H_%M_%S') , type=str, 
                     help="A specific suffix can be specified as part of\
                          the output filenames. To include a timestamp, use\
                              \"{args['starttime']}\" in the suffix.")
@@ -398,7 +398,6 @@ class MoneyAgent(Agent):
         self.initialize_consumption()
         self.connections=0 #tracks number of neighbors 
         self.trades=0 #tracks number of trades per timestep
-        #self.money_traded=0 #tracks money offered up for trade
         self.net_traded=0 #tracks net gain/loss from trades
         self.model.agents.append(self)
 
@@ -476,15 +475,17 @@ class MoneyAgent(Agent):
         epsilon = random.random()
         for i in neighbors:
             other = i
-            self.connections+=1
             if(other.unique_id == self.unique_id):
-                continue  
+                continue
+            self.connections+=1
+            other.connections+=1  
             w = self.model.G[self.unique_id][other.unique_id]['weight']
             if self.unique_id in problemAgents:
                     print(f"Weight of edge is {w} vs {model.min_weight}")
             delta_money=0 
             if(w >= model.min_weight):
                 self.trades+=1 
+                other.trades+=1 
                 xi = self.k
                 xj = other.k
                 #self.money_traded = epsilon * ((1-self.λ) * self.k + (1-other.λ) * other.k)
@@ -656,6 +657,9 @@ class BoltzmannWealthModelNetwork(Model):
         agent_df.reset_index(level=1, inplace = True)
         agent_df.to_csv(f"Results/ScipyV10_{args['filesuffix']}.csv")
         model_df.to_csv(f"Results/ScipyV10_{args['filesuffix']}model.csv")
+        endtime=datetime.datetime.now()
+        with open(f"Results/ScipyV10_{args['filesuffix']}params.txt", 'a') as pfile:
+            pfile.write(f"Start Time: {starttime.strftime('%Y-%m-%d_%H_%M_%S')}  End Time: {endtime.strftime('%Y-%m-%d_%H_%M_%S')}  Elapsed Time= {endtime-starttime}")
         print(f"Exiting at model time {model.time}")
         
     
@@ -694,7 +698,7 @@ else:
     N = args["agentN"]
     alphas = np.random.normal(loc = 1.08, scale = 0.074, size = N) #list of agent alphas, effectively ability/human capital
     capital = np.random.uniform(low = 0.1, high = 10, size = N) #list of agent initial capital amounts
-    sigmas=np.round(np.random.uniform(1,1.9,size=N),1) #list of agent sigmas, effectively risk-averseness
+    sigmas=np.round(np.random.normal(loc = 1, scale = 0.5,size=N),1) #list of agent sigmas, effectively risk-averseness
     lambdas=np.round(np.random.uniform(0.1,0.949,size=N),1) #list of agent lambdas, effectively savings propensity
 
 global_θ = np.random.choice(g_theta_list, steps ,p=g_theta_distribution).tolist() #list of model-level thetas, effectively schedule of system shocks
@@ -709,7 +713,7 @@ if args["agentfile"]!=False:
         print("Agent import attempted but not successful. Please see formatting guidelines and reattempt.")
 
 with open(f"Results/ScipyV10_{args['filesuffix']}params.txt",'w') as pfile: 
-    pfile.write(str(args))
+    pfile.write(str(args)+'\n')
 initialdf.to_csv(f"Results/ScipyV10_{args['filesuffix']}properties.csv")
 
 model = BoltzmannWealthModelNetwork(b, a, N)
