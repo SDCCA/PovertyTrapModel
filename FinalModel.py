@@ -605,6 +605,7 @@ class BoltzmannWealthModelNetwork(Model):
         nx.set_edge_attributes(self.G, 1, 'weight') #setting all initial edges with a weight of 1
         self.nodes = np.linspace(0,N-1,N, dtype = 'int') #to keep track of the N nodes
         self.trade_partners=[]   
+        self.Refresh_Trade()
         stage_list=["stageA","stageB","stageC"]
         self.schedule = StagedActivation(self,stage_list,shuffle=True)
         self.datacollector = DataCollector(model_reporters = {"Gini": 'gini', "Global_Theta":'globe_theta',"Trade_Threshold":'min_weight'},agent_reporters={"k_t":'k','income':'income',
@@ -659,7 +660,7 @@ class BoltzmannWealthModelNetwork(Model):
         model_df.to_csv(f"Results/ScipyV10_{args['filesuffix']}model.csv")
         endtime=datetime.datetime.now()
         with open(f"Results/ScipyV10_{args['filesuffix']}params.txt", 'a') as pfile:
-            pfile.write(f"Start Time: {starttime.strftime('%Y-%m-%d_%H_%M_%S')}  End Time: {endtime.strftime('%Y-%m-%d_%H_%M_%S')}  Elapsed Time= {endtime-starttime}")
+            pfile.write(f"Start Time: {starttime.strftime('%Y-%m-%d %H:%M:%S')}  End Time: {endtime.strftime('%Y-%m-%d %H:%M:%S')}  Elapsed Time= {endtime-starttime}")
         print(f"Exiting at model time {model.time}")
         
     
