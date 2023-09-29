@@ -1,3 +1,20 @@
+number_agents: 100
+initial_graph_type: barabasi-albert
+step_count: 0
+step_target: 20
+steering_parameters:
+  del_prob: 0.05
+  edata:
+  - all
+  epath: ./edge_data
+  mode: xarray
+  ndata:
+  - all
+  npath: ./agent_data.zarr
+  ratio: 0.1
+  wealth_method: weighted_transfer
+  weight_a: 0.69
+  weight_b: 35
 alpha_dist:
   decimals: null
   parameters:
@@ -18,7 +35,6 @@ cost_vals:
 gamma_vals:
 - 0.3
 - 0.45
-initial_graph_type: barabasi-albert
 lam_dist:
   decimals: 1
   parameters:
@@ -26,23 +42,7 @@ lam_dist:
   - 0.9
   round: true
   type: uniform
-number_agents: 1000
 sigma: 0.5
-steering_parameters:
-  del_prob: 0.05
-  edata:
-  - all
-  epath: ./edge_data
-  mode: xarray
-  ndata:
-  - all
-  npath: ./agent_data.zarr
-  ratio: 0.1
-  wealth_method: weighted_transfer
-  weight_a: 0.69
-  weight_b: 35
-step_count: 0
-step_target: 20
 tec_dist:
   decimals: null
   parameters:
