@@ -1,6 +1,7 @@
 import dgl
 import networkx as nx
 import torch
+import yaml
 
 from dgl_ptm.network.network_creation import network_creation
 from dgl_ptm.model.step import ptm_step
@@ -113,11 +114,19 @@ class PovertyTrapModel(Model):
                          If parameters are passed, non-specifed parameters will be set with defaults.
 
         """
+        modelpars = self.__dict__.keys()
         if parameterFilePath != None:
-            pass
-            #TODO restore from file incl. check for model identifer
+            with open(parameterFilePath, 'r') as readfile:
+                try:
+                    self.__dict__ = yaml.safe_load(readfile)
+                except yaml.YAMLError as exc:
+                    raise SyntaxError(exc)
+                
+            for modelpar in modelpars:
+                if modelpar not in ['_model_identifier','model_graph']:
+                    if type(self.__dict__[modelpar]) is list:
+                        self.__dict__[modelpar] = torch.tensor(self.__dict__[modelpar])
         else:
-            modelpars = self.__dict__.keys()
             if default:
                 for modelpar in modelpars:
                     if modelpar not in ['_model_identifier','model_graph']:
