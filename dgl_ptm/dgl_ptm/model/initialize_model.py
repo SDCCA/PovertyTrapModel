@@ -106,11 +106,11 @@ class PovertyTrapModel(Model):
 
     def set_model_parameters(self,*,parameterFilePath=None, default=True, **kwargs):
         """
-        Load (TODO) or set model parameters
+        Load or set model parameters
 
-        :param parameterFlePath: optional, path to restore file (TODO)
+        :param parameterFlePath: optional, path to parameter file
         :param default: Specify whether default values should be used (True;default)
-        :param **kwargs: flexible passing of mode parameters. Only those supported by the model are accpted.
+        :param **kwargs: flexible passing of mode parameters. Only those supported by the model are accepted.
                          If parameters are passed, non-specifed parameters will be set with defaults.
 
         """
