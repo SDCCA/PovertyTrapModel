@@ -71,7 +71,7 @@ class PovertyTrapModel(Model):
     'initial_graph_type': 'barabasi-albert',
     'step_count':0,
     'step_target':20,
-    'steering_parameters':{'npath':'./agent_data.zarr','epath':'./edge_data', 'ndata':['all'],'edata':['all'],'mode':'xarray','wealth_method':'weighted_transfer','del_prob':0.05,'ratio':0.1,'weight_a':0.69,'weight_b':35}}
+    'steering_parameters':{'npath':'./agent_data.zarr','epath':'./edge_data', 'ndata':['all'],'edata':['all'],'mode':'xarray','wealth_method':'singular_transfer','del_prob':0.05,'ratio':0.1,'weight_a':0.69,'weight_b':35}}
 
     def __init__(self,*, model_identifier=None, restart=False, savestate=None):
         """
