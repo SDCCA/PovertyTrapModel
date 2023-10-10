@@ -72,7 +72,7 @@ class PovertyTrapModel(Model):
     'initial_graph_type': 'barabasi-albert',
     'step_count':0,
     'step_target':20,
-    'steering_parameters':{'npath':'./agent_data.zarr','epath':'./edge_data', 'ndata':['all'],'edata':['all'],'mode':'xarray','wealth_method':'singular_transfer','del_prob':0.05,'ratio':0.1,'weight_a':0.69,'weight_b':35}}
+    'steering_parameters':{'npath':'./agent_data.zarr','epath':'./edge_data', 'ndata':['all'],'edata':['all'],'mode':'xarray','wealth_method':'singular_transfer','del_prob':0.05,'ratio':0.1,'weight_a':0.69,'weight_b':35, 'truncation_weight':1.0e-10}}
 
     def __init__(self,*, model_identifier=None, restart=False, savestate=None):
         """
@@ -152,7 +152,7 @@ class PovertyTrapModel(Model):
         """
         self.create_network()
         self.initialize_agent_properties()
-        weight_update(self.model_graph, self.steering_parameters['weight_a'], self.steering_parameters['weight_b'])
+        weight_update(self.model_graph, self.steering_parameters['weight_a'], self.steering_parameters['weight_b'], self.steering_parameters['truncation_weight'])
 
     def create_network(self):
         """

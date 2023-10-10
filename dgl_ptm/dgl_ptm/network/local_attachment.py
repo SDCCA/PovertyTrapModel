@@ -62,7 +62,7 @@ def select_FoF_attachment(srcid,dstid,graph,edgeprop=None):
     if possible_FoF_nodes.numel() !=0:
         already_connected = existing_connections(srcid,possible_FoF_nodes,graph)
         if torch.all(already_connected):
-            print(f'all FoF nodes are already irecdctly connected to node {srcid}.')
+            print(f'all FoF nodes are already direcctly connected to node {srcid}.')
         else:
             possible_FoF_to_link = possible_FoF_nodes[already_connected==False]
             dst_F_link_ids = graph.edge_ids(torch.ones_like(possible_FoF_to_link,dtype=int)*dstid,possible_FoF_to_link)

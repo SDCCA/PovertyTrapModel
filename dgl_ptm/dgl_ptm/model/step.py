@@ -36,7 +36,7 @@ def ptm_step(agent_graph, timestep, params):
     agent_update(agent_graph)
 
     #Weight update
-    weight_update(agent_graph, a = params['weight_a'], b = params['weight_b'])
+    weight_update(agent_graph, a = params['weight_a'], b = params['weight_b'],truncation_weight = params['truncation_weight'])
 
     #Data collection and storage
     data_collection(agent_graph, timestep = timestep, npath = params['npath'], epath = params['epath'], ndata = params['ndata'], 
