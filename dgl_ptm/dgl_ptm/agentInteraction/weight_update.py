@@ -13,7 +13,7 @@ def weight_update(agent_graph, a, b):
     """
     agent_graph.edata['weight'] = torch.rand(agent_graph.num_edges(),1)
     agent_graph.apply_edges(fn.u_sub_v('wealth','wealth','wealth_diff'))
-    weights = 1./(1. + torch.exp(a*(agent_graph.edata['wealth_diff']-b)))
+    weights = 1./(1. + torch.exp(a*(torch.abs(agent_graph.edata['wealth_diff'])-b)))
     finiteweights = torch.isfinite(weights)
     weights[~finiteweights] = 0.
     print(weights)
