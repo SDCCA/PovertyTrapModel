@@ -39,12 +39,12 @@ def _node_property_collector(agent_graph, npath, ndata, timestep, mode):
             agent_data_instance = xr.Dataset()
             for prop in ndata:
                 _check_nprop_in_graph(agent_graph, prop)
-                agent_data_instance = agent_data_instance.assign(prop=(['n_agents','ntime'], agent_graph.ndata[prop][:,None].numpy()))
+                agent_data_instance = agent_data_instance.assign(prop=(['n_agents','n_time'], agent_graph.ndata[prop][:,None].numpy()))
                 agent_data_instance = agent_data_instance.rename(name_dict={'prop':prop})
             if timestep == 0:
                 agent_data_instance.to_zarr(npath, mode = 'w')
             else:
-                agent_data_instance.to_zarr(npath, append_dim='ntime')
+                agent_data_instance.to_zarr(npath, append_dim='n_time')
         else:
             raise NotImplementedError("Only 'xarray' mode currrent available")
     else:

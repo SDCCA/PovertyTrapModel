@@ -64,15 +64,15 @@ class PovertyTrapModel(Model):
     'gamma_vals':torch.tensor([0.3,0.45]) , 
     'sigma': torch.tensor(0.5),
     'cost_vals': torch.tensor([0.,0.45]) , 
-    'tec_levels': torch.tensor([0,1]), 
-    'tec_dist': {'type':'bernoulli','parameters':[0.5,None],'round':False,'decimals':None}, 
+    'technology_levels': torch.tensor([0,1]), 
+    'technology_dist': {'type':'bernoulli','parameters':[0.5,None],'round':False,'decimals':None}, 
     'capital_dist': {'type':'uniform','parameters':[0.1,10.],'round':False,'decimals':None}, 
     'alpha_dist': {'type':'normal','parameters':[1.08,0.074],'round':False,'decimals':None},
-    'lam_dist': {'type':'uniform','parameters':[0.1,0.9],'round':True,'decimals':1},
+    'lambda_dist': {'type':'uniform','parameters':[0.1,0.9],'round':True,'decimals':1},
     'initial_graph_type': 'barabasi-albert',
     'step_count':0,
     'step_target':20,
-    'steering_parameters':{'npath':'./agent_data.zarr','epath':'./edge_data', 'ndata':['all'],'edata':['all'],'mode':'xarray','wealth_method':'singular_transfer','del_prob':0.05,'ratio':0.1,'weight_a':0.69,'weight_b':35, 'truncation_weight':1.0e-10}}
+    'steering_parameters':{'npath':'./agent_data.zarr','epath':'./edge_data', 'ndata':['all'],'edata':['all'],'mode':'xarray','wealth_method':'singular_transfer','deletion_prob':0.05,'ratio':0.1,'homophily_parameter':0.69,'characteristic_distance':35, 'truncation_weight':1.0e-10}}
 
     def __init__(self,*, model_identifier=None, restart=False, savestate=None):
         """
@@ -93,11 +93,11 @@ class PovertyTrapModel(Model):
             self.gamma_vals = None
             self.sigma = None
             self.cost_vals = None
-            self.tec_levels = None
-            self.tec_dist = None
+            self.technology_levels = None
+            self.technology_dist = None
             self.capital_dist = None
             self.alpha_dist = None
-            self.lam_dist = None 
+            self.lambda_dist = None 
             self.initial_graph_type = None
             self.model_graph = None
             self.step_count = None
@@ -152,7 +152,7 @@ class PovertyTrapModel(Model):
         """
         self.create_network()
         self.initialize_agent_properties()
-        weight_update(self.model_graph, self.steering_parameters['weight_a'], self.steering_parameters['weight_b'], self.steering_parameters['truncation_weight'])
+        weight_update(self.model_graph, self.steering_parameters['homophily_parameter'], self.steering_parameters['characteristic_distance'], self.steering_parameters['truncation_weight'])
 
     def create_network(self):
         """
@@ -174,12 +174,13 @@ class PovertyTrapModel(Model):
         agentsSigma = self._initialize_agents_sigma()
         agentsTecLevel, agentsGamma, agentsCost = self._initialize_agents_tec()
 
+        # TODO: add comment explaining what each variable is (here? where?).
         if isinstance(self.model_graph,dgl.DGLGraph):
             self.model_graph.ndata['wealth'] = agentsCapital
             self.model_graph.ndata['alpha'] = agentsAlpha
             self.model_graph.ndata['lambda'] = agentsLam
             self.model_graph.ndata['sigma'] = agentsSigma
-            self.model_graph.ndata['tec'] = agentsTecLevel
+            self.model_graph.ndata['technology_level'] = agentsTecLevel
             self.model_graph.ndata['gamma'] = agentsGamma
             self.model_graph.ndata['cost'] = agentsCost
             self.model_graph.ndata['zeros'] = torch.zeros(self.model_graph.num_nodes())
@@ -205,7 +206,7 @@ class PovertyTrapModel(Model):
         """
         Initialize agents lambda as a 1d tensor sampled from the specified intial lambda distribution
         """
-        agentsLam = sample_distribution_tensor(self.lam_dist['type'],self.lam_dist['parameters'],self.number_agents,round=self.lam_dist['round'],decimals=self.lam_dist['decimals'])
+        agentsLam = sample_distribution_tensor(self.lambda_dist['type'],self.lambda_dist['parameters'],self.number_agents,round=self.lambda_dist['round'],decimals=self.lambda_dist['decimals'])
         return agentsLam
 
     def _initialize_agents_sigma(self):
@@ -221,10 +222,10 @@ class PovertyTrapModel(Model):
         Initialize agents gamma and cost distributions according to their tec level and the spefied initial gamma and cost
         values associated with that tech level
         """
-        agentsTecLevel = sample_distribution_tensor(self.tec_dist['type'],self.tec_dist['parameters'],self.number_agents,round=self.tec_dist['round'],decimals=self.tec_dist['decimals'])
+        agentsTecLevel = sample_distribution_tensor(self.technology_dist['type'],self.technology_dist['parameters'],self.number_agents,round=self.technology_dist['round'],decimals=self.technology_dist['decimals'])
         agentsGamma = torch.zeros(self.number_agents)
         agentsCost = torch.zeros(self.number_agents)
-        for i in range(len(self.tec_levels)):
+        for i in range(len(self.technology_levels)):
             tec_mask = agentsTecLevel == i
             agentsGamma[tec_mask] = self.gamma_vals[i]
             agentsCost[tec_mask] = self.cost_vals[i]   

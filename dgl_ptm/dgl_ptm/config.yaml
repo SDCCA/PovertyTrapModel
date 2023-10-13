@@ -3,7 +3,7 @@ initial_graph_type: barabasi-albert
 step_count: 0
 step_target: 20
 steering_parameters:
-  del_prob: 0.05
+  deletion_prob: 0.05
   edata:
   - all
   epath: ./edge_data
@@ -13,8 +13,8 @@ steering_parameters:
   npath: ./agent_data.zarr
   ratio: 0.1
   wealth_method: weighted_transfer
-  weight_a: 0.69
-  weight_b: 35
+  homophily_parameter: 0.69
+  characteristic_distance: 35
 alpha_dist:
   decimals: null
   parameters:
@@ -35,7 +35,7 @@ cost_vals:
 gamma_vals:
 - 0.3
 - 0.45
-lam_dist:
+lambda_dist:
   decimals: 1
   parameters:
   - 0.1
@@ -43,13 +43,13 @@ lam_dist:
   round: true
   type: uniform
 sigma: 0.5
-tec_dist:
+technology_dist:
   decimals: null
   parameters:
   - 0.5
   - null
   round: false
   type: bernoulli
-tec_levels:
+technology_levels:
 - 0
 - 1
