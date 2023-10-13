@@ -2,6 +2,7 @@ import torch
 import dgl 
 from dgl.sparse import spmatrix
 
+# TODO: check readability variables.
 def local_attachment_tensor(graph,n_FoF_links,edge_prop=None,p_attach=1.):
     adj_matrix = adjacency_matrix_with_edge_prop(graph,eprop=edge_prop)
     norm_prop = adj_matrix.val/adj_matrix.val.sum()

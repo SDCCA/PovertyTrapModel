@@ -26,7 +26,7 @@ def trade_money(agent_graph, method: str):
     TODO: Rename variables as per Thijs' updates on notebook
     """
     # Calculating disposable wealth
-    agent_graph.ndata['disposable_wealth'] = agent_graph.ndata['lambda']*agent_graph.ndata['wealth']
+    agent_graph.ndata['disposable_wealth'] = agent_graph.ndata['lambda']*agent_graph.ndata['wealth'] # TODO: declare what lambda is
     
     # Transfer of wealth
     if method == 'weighted_transfer':

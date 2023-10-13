@@ -219,7 +219,7 @@ class PovertyTrapModel(Model):
     def _initialize_agents_tec(self):
         """
         Initialize the agents technology level distribution as 1d tensor sampled from the specified intial technology level distribution.
-        Initialize agents gamma and cost distributions according to their tec level and the spefied initial gamma and cost
+        Initialize agents gamma and cost distributions according to their technology level and the spefied initial gamma and cost
         values associated with that tech level
         """
         agentsTecLevel = sample_distribution_tensor(self.technology_dist['type'],self.technology_dist['parameters'],self.number_agents,round=self.technology_dist['round'],decimals=self.technology_dist['decimals'])
