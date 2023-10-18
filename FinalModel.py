@@ -61,7 +61,6 @@ Loop through each model step:
      a randomly selected pair of unconnected agents.
     The list of neighbor pairs is refreshed.
     DataCollector collects step data.
-
 Write relevant model and agent data to csv files.
 
 
@@ -217,10 +216,10 @@ def calculate_next_k(agentinfo):
     #formula for k_t+1 is applied at the beginning of each time step 
     # k_t+1 becomes the new k_t
     
-    k,c,i_a,m = agentinfo.k,agentinfo.consum,agentinfo.i_a,agentinfo.m
+    k,c,i_a,m,α = agentinfo.k,agentinfo.consum,agentinfo.i_a,agentinfo.m,agentinfo.α
     if agentinfo.unique_id in problemAgents:
         print(f"Calculating using k={k}, global_theta={global_θ[model.time]}, m={m}, c={c}, i_a={i_a}, sigma={agentinfo.σ}, alpha={agentinfo.α}, percieved theta={agentinfo.θ}")
-    k_tplus1 = (global_θ[model.time] + m * (1-global_θ[model.time])) * (k - c - i_a + (1-𝛿) * k)
+    k_tplus1 = (global_θ[model.time] + m * (1-global_θ[model.time])) * (income_function(k,α) - c - i_a + (1-𝛿) * k)
     
     if agentinfo.unique_id in problemAgents:
    
