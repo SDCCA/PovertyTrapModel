@@ -43,6 +43,14 @@ lam_dist:
   round: true
   type: uniform
 sigma: 0.5
+tech_gamma: 
+  - 0.3
+  - 0.35
+  - 0.45
+tech_cost:
+  - 0
+  - 0.15
+  - 0.65
 tec_dist:
   decimals: null
   parameters:
@@ -53,3 +61,35 @@ tec_dist:
 tec_levels:
 - 0
 - 1
+m_theta_dist:
+  decimals: null
+  parameters:
+  - [0.01 ,0.1, 0.79, 0.1]
+  - [0.1, 0.5, 0.8, 1]
+  round: false
+  type: multinomial
+a_theta_dist:
+  decimals: null
+  parameters:
+  - 0.1
+  - 1
+  round: true
+  type: uniform
+sensitivity_dist:
+  decimals: null
+  parameters:
+  - 0
+  - 1
+  round: true
+  type: uniform
+adapt_m: 
+  - 0
+  - 0.5
+  - 0.9
+adapt_cost:
+  - 0
+  - 0.25
+  - 0.45
+depreciation: 0.6
+discount: 0.95
+

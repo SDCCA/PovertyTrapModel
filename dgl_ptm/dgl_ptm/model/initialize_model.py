@@ -16,7 +16,7 @@ def sample_distribution_tensor(type, distParameters, nSamples, round=False, deci
     :param distParameters: array of parameters as required/supported by requested distribution type
     :param nSamples: number of samples to return (as 1d tensor)
     :param round: optional, whether the samples are to be rounded
-    :param decimals: optional, required if round is specified. decimla olaces to round to
+    :param decimals: optional, required if round is specified. decimal places to round to
     """
     if type == 'uniform':
         dist = torch.distributions.uniform.Uniform(torch.tensor(distParameters[0]),torch.tensor(distParameters[1])).sample(torch.tensor([nSamples]))
@@ -24,8 +24,11 @@ def sample_distribution_tensor(type, distParameters, nSamples, round=False, deci
         dist = torch.distributions.normal.Normal(torch.tensor(distParameters[0]),torch.tensor(distParameters[1])).sample(torch.tensor([nSamples]))
     elif type == 'bernoulli':
         dist = torch.distributions.bernoulli.Bernoulli(probs=distParameters[0],logits=distParameters[1],validate_args=None).sample(torch.tensor([nSamples]))
+    elif type == 'multinomial':
+        dist = torch.gather(torch.Tensor(distParameters[1]), 0, torch.multinomial(torch.tensor(distParameters[0]), nSamples, replacement=True))
+
     else:
-        raise NotImplementedError('Currently only uniform, normal and bernoulli distributions are supported')
+        raise NotImplementedError('Currently only uniform, normal, multinomial, and bernoulli distributions are supported')
 
     if round:
         if decimals == None:
@@ -62,9 +65,16 @@ class PovertyTrapModel(Model):
     #default values as class variable 
     default_model_parameters = {'number_agents': 100 , 
     'gamma_vals':torch.tensor([0.3,0.45]) , 
-    'sigma': torch.tensor(0.5),
-    'cost_vals': torch.tensor([0.,0.45]) , 
+    'sigma_dist': {'type':'uniform','parameters':[0.1,1.9],'round':True,'decimals':1},
+    #'tech_gamma': torch.tensor([0.3,0.35,0.45]),
+    #'tech_cost': torch.tensor([0,0.15,0.65]),
+    #'adapt_m':torch.tensor([0,0.5,0.9]),
+    #'adapt_cost':torch.tensor([0,0.25,0.45]),
+    'cost_vals': torch.tensor([0.,0.45]), 
     'tec_levels': torch.tensor([0,1]), 
+    #'m_theta_dist': {'type':'multinomial','parameters':[[0.01 ,0.1, 0.79, 0.1],[0.1, 0.5, 0.8, 1]],'round':False,'decimals':None},
+    'a_theta_dist': {'type':'uniform','parameters':[0.1,1],'round':False,'decimals':None},
+    'sensitivity_dist':{'type':'uniform','parameters':[0.0,1],'round':False,'decimals':None},
     'tec_dist': {'type':'bernoulli','parameters':[0.5,None],'round':False,'decimals':None}, 
     'capital_dist': {'type':'uniform','parameters':[0.1,10.],'round':False,'decimals':None}, 
     'alpha_dist': {'type':'normal','parameters':[1.08,0.074],'round':False,'decimals':None},
@@ -72,7 +82,27 @@ class PovertyTrapModel(Model):
     'initial_graph_type': 'barabasi-albert',
     'step_count':0,
     'step_target':20,
-    'steering_parameters':{'npath':'./agent_data.zarr','epath':'./edge_data', 'ndata':['all'],'edata':['all'],'mode':'xarray','wealth_method':'singular_transfer','del_prob':0.05,'ratio':0.1,'weight_a':0.69,'weight_b':35, 'truncation_weight':1.0e-10}}
+    'steering_parameters':{'npath':'./agent_data.zarr',
+                            'epath':'./edge_data', 
+                            'ndata':['all_except',['a_table']],
+                            'edata':['all'],
+                            'mode':'xarray',
+                            'wealth_method':'singular_transfer',
+                            'income_method':'pseudo_income_generation',
+                            'tech_gamma': torch.tensor([0.3,0.35,0.45]),
+                            'tech_cost': torch.tensor([0,0.15,0.65]),
+                            'consume_method':'pseudo_consumption',
+                            'adapt_m':torch.tensor([0,0.5,0.9]),
+                            'adapt_cost':torch.tensor([0,0.25,0.45]),
+                            'depreciation': 0.6,
+                            'discount': 0.95,
+                            'm_theta_dist': {'type':'multinomial','parameters':[[0.01 ,0.1, 0.79, 0.1],[0.1, 0.5, 0.8, 1]],'round':False,'decimals':None},
+                            'del_prob':0.05,
+                            'ratio':0.1,
+                            'weight_a':0.69,
+                            'weight_b':35, 
+                            'truncation_weight':1.0e-10,
+                            'step_type':'default'}}
 
     def __init__(self,*, model_identifier=None, restart=False, savestate=None):
         """
@@ -91,17 +121,28 @@ class PovertyTrapModel(Model):
                 raise ValueError('A model identifier must be specified')
             self.number_agents = None
             self.gamma_vals = None
-            self.sigma = None
+            self.sigma_dist = None
+            #self.tech_gamma = None
+            #self.tech_cost = None
+            #self.adapt_m = None
+            #self.adapt_cost = None
             self.cost_vals = None
             self.tec_levels = None
             self.tec_dist = None
+            #self.m_theta_dist = None
+            self.a_theta_dist = None
+            self.sensitivity_dist = None
             self.capital_dist = None
             self.alpha_dist = None
             self.lam_dist = None 
+            #self.depreciation = None
+            #self.discount = None
             self.initial_graph_type = None
             self.model_graph = None
             self.step_count = None
             self.step_target = None
+            #self.income_method = None
+            #self.consume_method = None
             self.steering_parameters = None
 
     def set_model_parameters(self,*,parameterFilePath=None, default=True, **kwargs):
@@ -152,6 +193,7 @@ class PovertyTrapModel(Model):
         """
         self.create_network()
         self.initialize_agent_properties()
+        self.initialize_model_properties()
         weight_update(self.model_graph, self.steering_parameters['weight_a'], self.steering_parameters['weight_b'], self.steering_parameters['truncation_weight'])
 
     def create_network(self):
@@ -161,6 +203,18 @@ class PovertyTrapModel(Model):
 
         agent_graph = network_creation(self.number_agents, self.initial_graph_type)
         self.model_graph = agent_graph
+
+    def initialize_model_properties(self):
+        """
+        Initialize model properties.
+        Values are initialized as tensors of length corresponding to number of time steps.
+        """
+        modelTheta = self._initialize_model_theta()
+        self.steering_parameters['modelTheta'] = modelTheta
+
+    def _initialize_model_theta(self):
+        modelTheta = sample_distribution_tensor(self.steering_parameters['m_theta_dist']['type'],self.steering_parameters['m_theta_dist']['parameters'],self.step_target,round=self.steering_parameters['m_theta_dist']['round'],decimals=self.steering_parameters['m_theta_dist']['decimals'])
+        return modelTheta
 
     def initialize_agent_properties(self):
         """
@@ -172,24 +226,55 @@ class PovertyTrapModel(Model):
         agentsAlpha = self._initialize_agents_alpha()
         agentsLam =  self._initialize_agents_lam()
         agentsSigma = self._initialize_agents_sigma()
+        agentsTheta = self._initialize_agents_theta()
+        agentsSensitivity = self._initialize_agents_sensitivity()
+        agentsAdaptTable = self._initialize_agents_adapttable()
         agentsTecLevel, agentsGamma, agentsCost = self._initialize_agents_tec()
 
         if isinstance(self.model_graph,dgl.DGLGraph):
             self.model_graph.ndata['wealth'] = agentsCapital
             self.model_graph.ndata['alpha'] = agentsAlpha
+            self.model_graph.ndata['theta'] = agentsTheta
+            self.model_graph.ndata['sensitivity'] = agentsSensitivity
             self.model_graph.ndata['lambda'] = agentsLam
             self.model_graph.ndata['sigma'] = agentsSigma
             self.model_graph.ndata['tec'] = agentsTecLevel
             self.model_graph.ndata['gamma'] = agentsGamma
             self.model_graph.ndata['cost'] = agentsCost
+            self.model_graph.ndata['a_table'] = agentsAdaptTable
+            self.model_graph.ndata['wealth_consumption'] = torch.zeros(self.model_graph.num_nodes())
+            self.model_graph.ndata['i_a'] = torch.zeros(self.model_graph.num_nodes())
+            self.model_graph.ndata['m'] = torch.zeros(self.model_graph.num_nodes())
             self.model_graph.ndata['zeros'] = torch.zeros(self.model_graph.num_nodes())
             self.model_graph.ndata['ones'] = torch.ones(self.model_graph.num_nodes())
         else:
             raise RuntimeError('model graph must be a defined DGLgraph object. Consder running `create_network` before initializing agent properties')
 
+
+    def _initialize_agents_adapttable(self):
+        """
+        Initialize agents adaptation measure knowledge, currently uniform.
+        """
+        agentsAdaptTable =torch.stack([self.steering_parameters['adapt_m'],self.steering_parameters['adapt_cost']]).repeat(self.number_agents,1,1)
+        return agentsAdaptTable
+
+    def _initialize_agents_theta(self):
+        """
+        Initialize agents theta as a 1d tensor sampled from the specified initial theta distribution
+        """
+        agentsTheta = sample_distribution_tensor(self.a_theta_dist['type'],self.a_theta_dist['parameters'],self.number_agents,round=self.a_theta_dist['round'],decimals=self.a_theta_dist['decimals'])
+        return agentsTheta
+
+    def _initialize_agents_sensitivity(self):
+        """
+        Initialize agents sensitivity as a 1d tensor sampled from the specified initial sensitivity distribution
+        """
+        agentsSensitivity = sample_distribution_tensor(self.sensitivity_dist['type'],self.sensitivity_dist['parameters'],self.number_agents,round=self.sensitivity_dist['round'],decimals=self.sensitivity_dist['decimals'])
+        return agentsSensitivity
+        
     def _initialize_agents_capital(self):
         """
-        Initialize agents captial as a 1d tensor sampled from the specified intial capita distribution
+        Initialize agents captial as a 1d tensor sampled from the specified intial capital distribution
         """
         agentsCapital = sample_distribution_tensor(self.capital_dist['type'],self.capital_dist['parameters'],self.number_agents,round=self.capital_dist['round'],decimals=self.capital_dist['decimals'])
         return agentsCapital
@@ -212,7 +297,7 @@ class PovertyTrapModel(Model):
         """
         Initialize agents sigma as a 1d tensor 
         """
-        agentsSigma = torch.ones(self.number_agents)*self.sigma
+        agentsSigma = sample_distribution_tensor(self.sigma_dist['type'],self.sigma_dist['parameters'],self.number_agents,round=self.sigma_dist['round'],decimals=self.sigma_dist['decimals'])
         return agentsSigma
 
     def _initialize_agents_tec(self):
@@ -235,13 +320,13 @@ class PovertyTrapModel(Model):
             ptm_step(self.model_graph,self.step_count,self.steering_parameters)
             self.step_count +=1
         except:
-            #TODO add model dump here. Alsao check againstt previous save to avoid overwriting
+            #TODO add model dump here. Also check against previous save to avoid overwriting
 
 
             raise RuntimeError(f'execution of step failed for step {self.step_count}')
 
 
     def run(self):
-        while self.step_count <= self.step_target:
-            print(f'performing step {self.step_count} of {self.step_target}')
+        while self.step_count < self.step_target:
+            print(f'performing step {self.step_count+1} of {self.step_target}')
             self.step()

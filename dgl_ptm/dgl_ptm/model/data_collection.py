@@ -23,9 +23,12 @@ def data_collection(agent_graph, timestep, npath='./agent_data', epath='./edge_d
         Output:
 
     '''
+    print("gets to data collection")
 
     if ndata == ['all']:
         ndata = list(agent_graph.node_attr_schemes().keys())
+    if ndata[0] == 'all_except':
+        ndata = list(agent_graph.node_attr_schemes().keys() - ndata[1])
     if edata == ['all']:
         edata = list(agent_graph.edge_attr_schemes().keys())
 

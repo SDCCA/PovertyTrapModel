@@ -23,22 +23,48 @@ def ptm_step(agent_graph, timestep, params):
         Output:
             agent_graph: Updated agent_graph after one step of functional manipulation
     '''
+    if params['step_type']=='default':
+        #Wealth transfer
+        trade_money(agent_graph, method = params['wealth_method'])
+        
+        #Link/edge manipulation
+        local_attachment(agent_graph, n_FoF_links = 1, edge_prop = 'weight', p_attach=1.  )
+        link_deletion(agent_graph, del_prob = params['del_prob'])
+        global_attachment(agent_graph, ratio = params['ratio'])
+        
+        #Update agent states
+        agent_update(agent_graph, params)
 
-    #Wealth transfer
-    trade_money(agent_graph, method = params['wealth_method'])
-    
-    #Link/edge manipulation
-    local_attachment(agent_graph, n_FoF_links = 1, edge_prop = 'weight', p_attach=1.  )
-    link_deletion(agent_graph, del_prob = params['del_prob'])
-    global_attachment(agent_graph, ratio = params['ratio'])
-    
-    #Update agent states
-    agent_update(agent_graph)
+        #Weight update
+        weight_update(agent_graph, a = params['weight_a'], b = params['weight_b'],truncation_weight = params['truncation_weight'])
 
-    #Weight update
-    weight_update(agent_graph, a = params['weight_a'], b = params['weight_b'],truncation_weight = params['truncation_weight'])
+        #Data collection and storage
+        data_collection(agent_graph, timestep = timestep, npath = params['npath'], epath = params['epath'], ndata = params['ndata'], 
+                        edata = params['edata'], mode = params['mode'])
+        
 
-    #Data collection and storage
-    data_collection(agent_graph, timestep = timestep, npath = params['npath'], epath = params['epath'], ndata = params['ndata'], 
-                    edata = params['edata'], mode = params['mode'])
-    
+    if params['step_type']=='custom':
+        if timestep!=0:
+            agent_update(agent_graph, params, timestep, method = 'capital')
+
+        #Wealth transfer
+        trade_money(agent_graph, method = params['wealth_method'])
+        
+        #Link/edge manipulation
+        local_attachment(agent_graph, n_FoF_links = 1, edge_prop = 'weight', p_attach=1.  )
+        link_deletion(agent_graph, del_prob = params['del_prob'])
+        global_attachment(agent_graph, ratio = params['ratio'])
+        
+        #Update agent states
+        agent_update(agent_graph, params, timestep, method ='theta')
+        agent_update(agent_graph, params, method ='consumption')
+        agent_update(agent_graph, params, method ='income')
+
+
+        #Weight update
+        weight_update(agent_graph, a = params['weight_a'], b = params['weight_b'],truncation_weight = params['truncation_weight'])
+
+        #Data collection and storage
+        data_collection(agent_graph, timestep = timestep, npath = params['npath'], epath = params['epath'], ndata = params['ndata'], 
+                        edata = params['edata'], mode = params['mode'])
+        
