@@ -8,16 +8,20 @@ def wealth_consumption(model_graph, model_params=None, method='pseudo_consumptio
     # Calculate wealth consumed
     if method == 'pseudo_consumption':
         _pseudo_wealth_consumption(model_graph)
-    elif method == 'optimized_consumption':
-        _optimized_wealth_consumption(model_graph,model_params)
+    elif method == 'fitted_consumption':
+        _fitted_wealth_consumption(model_graph)
+    elif method == 'bellman_consumption':
+        _bellman_wealth_consumption(model_graph,model_params)
     else:
         raise NotImplementedError("Incorrect method received. \
-                         Method needs to be 'pseudo_consumption' or 'optimized_consumption'")
+                         Method needs to be 'pseudo_consumption','fitted_consumption', or 'bellman_consumption'")
     
 
 def _pseudo_wealth_consumption(model_graph):
     model_graph.ndata['wealth_consumption'] = model_graph.ndata['wealth']*1./3.
     
+def _fitted_wealth_consumption(model_graph):
+    model_graph.ndata['wealth_consumption'] = 0.64036047*torch.log(model_graph.ndata['wealth'])
 
 
 def income_function(k,α,tech): 
@@ -70,7 +74,8 @@ class BellmanEquation:
 
 
 
-def _optimized_wealth_consumption(model_graph, model_params):
+
+def _bellman_wealth_consumption(model_graph, model_params):
     
     def maximize(g, a, b, args):
         """

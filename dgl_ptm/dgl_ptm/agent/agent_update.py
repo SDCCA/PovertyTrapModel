@@ -47,6 +47,7 @@ def _agent_capital_update(model_graph,model_params,timestep):
     #self.net_traded=model_graph.ndata['wealth']
     
 def _agent_theta_update(model_graph,model_params,timestep):
+    #updates agent perception of theta based on observation and sensitivity
     global_θ =model_params['modelTheta'][timestep]
     model_graph.ndata['theta'] = model_graph.ndata['theta'] * (1-model_graph.ndata['sensitivity']) + global_θ * model_graph.ndata['sensitivity']
 

@@ -64,15 +64,10 @@ class PovertyTrapModel(Model):
 
     #default values as class variable 
     default_model_parameters = {'number_agents': 100 , 
-    'gamma_vals':torch.tensor([0.3,0.45]) , 
+    'gamma_vals':torch.tensor([0.3,0.45]) , #for pseudo income
     'sigma_dist': {'type':'uniform','parameters':[0.1,1.9],'round':True,'decimals':1},
-    #'tech_gamma': torch.tensor([0.3,0.35,0.45]),
-    #'tech_cost': torch.tensor([0,0.15,0.65]),
-    #'adapt_m':torch.tensor([0,0.5,0.9]),
-    #'adapt_cost':torch.tensor([0,0.25,0.45]),
-    'cost_vals': torch.tensor([0.,0.45]), 
-    'tec_levels': torch.tensor([0,1]), 
-    #'m_theta_dist': {'type':'multinomial','parameters':[[0.01 ,0.1, 0.79, 0.1],[0.1, 0.5, 0.8, 1]],'round':False,'decimals':None},
+    'cost_vals': torch.tensor([0.,0.45]), #for pseudo income
+    'tec_levels': torch.tensor([0,1]), #check if deletable
     'a_theta_dist': {'type':'uniform','parameters':[0.1,1],'round':False,'decimals':None},
     'sensitivity_dist':{'type':'uniform','parameters':[0.0,1],'round':False,'decimals':None},
     'tec_dist': {'type':'bernoulli','parameters':[0.5,None],'round':False,'decimals':None}, 
@@ -96,7 +91,7 @@ class PovertyTrapModel(Model):
                             'adapt_cost':torch.tensor([0,0.25,0.45]),
                             'depreciation': 0.6,
                             'discount': 0.95,
-                            'm_theta_dist': {'type':'multinomial','parameters':[[0.01 ,0.1, 0.79, 0.1],[0.1, 0.5, 0.8, 1]],'round':False,'decimals':None},
+                            'm_theta_dist': {'type':'multinomial','parameters':[[0.02 ,0.03, 0.05, 0.9],[0.7, 0.8, 0.9, 1]],'round':False,'decimals':None},
                             'del_prob':0.05,
                             'ratio':0.1,
                             'weight_a':0.69,
@@ -122,27 +117,18 @@ class PovertyTrapModel(Model):
             self.number_agents = None
             self.gamma_vals = None
             self.sigma_dist = None
-            #self.tech_gamma = None
-            #self.tech_cost = None
-            #self.adapt_m = None
-            #self.adapt_cost = None
             self.cost_vals = None
             self.tec_levels = None
             self.tec_dist = None
-            #self.m_theta_dist = None
             self.a_theta_dist = None
             self.sensitivity_dist = None
             self.capital_dist = None
             self.alpha_dist = None
             self.lam_dist = None 
-            #self.depreciation = None
-            #self.discount = None
             self.initial_graph_type = None
             self.model_graph = None
             self.step_count = None
             self.step_target = None
-            #self.income_method = None
-            #self.consume_method = None
             self.steering_parameters = None
 
     def set_model_parameters(self,*,parameterFilePath=None, default=True, **kwargs):
