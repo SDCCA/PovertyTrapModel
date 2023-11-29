@@ -20,11 +20,3 @@ def weight_update(agent_graph, a, b, truncation_weight):
     weights[~finiteweights] = 0.
     truncated_weights = torch.where( weights > truncation_weight, weights, truncation_weight)
     agent_graph.edata['weight'] = truncated_weights
-    """
-    print('---wealth---')
-    print(agent_graph.ndata['wealth'])
-    print('---wealth_diff---')
-    print(agent_graph.edata['wealth_diff'])
-    print('---weights---')
-    print(agent_graph.edata['weight'])
-    """

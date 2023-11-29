@@ -96,8 +96,7 @@ class PovertyTrapModel(Model):
                             'ratio':0.1,
                             'weight_a':0.69,
                             'weight_b':35, 
-                            'truncation_weight':1.0e-10,
-                            'step_type':'default'}}
+                            'truncation_weight':1.0e-10,}}
 
     def __init__(self,*, model_identifier=None, restart=False, savestate=None):
         """
