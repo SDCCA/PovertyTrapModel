@@ -83,10 +83,11 @@ class PovertyTrapModel(Model):
                             'edata':['all'],
                             'mode':'xarray',
                             'wealth_method':'singular_transfer',
-                            'income_method':'pseudo_income_generation',
+                            'income_method':'default',
+                            'capital_update_method': 'default'
+                                'consume_method':'default',
                             'tech_gamma': torch.tensor([0.3,0.35,0.45]),
                             'tech_cost': torch.tensor([0,0.15,0.65]),
-                            'consume_method':'pseudo_consumption',
                             'adapt_m':torch.tensor([0,0.5,0.9]),
                             'adapt_cost':torch.tensor([0,0.25,0.45]),
                             'depreciation': 0.6,
