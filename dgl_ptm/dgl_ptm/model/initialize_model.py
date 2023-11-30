@@ -84,8 +84,9 @@ class PovertyTrapModel(Model):
                             'mode':'xarray',
                             'wealth_method':'singular_transfer',
                             'income_method':'default',
-                            'capital_update_method': 'default'
-                                'consume_method':'default',
+                            'capital_update_method':'default',
+                            'consume_method':'default',
+                            'perception_method':'default',
                             'tech_gamma': torch.tensor([0.3,0.35,0.45]),
                             'tech_cost': torch.tensor([0,0.15,0.65]),
                             'adapt_m':torch.tensor([0,0.5,0.9]),
