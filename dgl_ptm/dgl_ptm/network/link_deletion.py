@@ -1,33 +1,33 @@
 import dgl
 import torch
 
-def link_deletion(agent_graph, del_prob: float):
+def link_deletion(agent_graph, deletion_prob: float):
     '''
-        link_deletion - deletes links between agents with a deletion probability 'del_prob' 
+        link_deletion - deletes links between agents with a deletion probability 'deletion_prob' 
                         by sampling against a random uniform distribution.
 
         Args:
             agent_graph: DGLGraph with agent nodes and edges connecting agents
-            del_prob: Probability of deleting an existing edge between two agent nodes
+            deletion_prob: Probability of deleting an existing edge between two agent nodes
 
         Output:
-            agent_graph: Updated agent_graph with reduced edges based on 'del_prob'
+            agent_graph: Updated agent_graph with reduced edges based on 'deletion_prob'
     '''
-    agent_graph.remove_edges(_edgeids_2_delete(agent_graph, del_prob))
+    agent_graph.remove_edges(_edgeids_2_delete(agent_graph, deletion_prob))
 
-def _edgeids_2_delete(agent_graph, del_prob: float):
+def _edgeids_2_delete(agent_graph, deletion_prob: float):
     '''
         Identify edges to delete based on a probability and triangular matrix manipulation
 
         Args:
             agent_graph: DGLGraph with agent nodes and edges connecting agents
-            del_prob: Probability of deleting an existing edge between two agent nodes
+            deletion_prob: Probability of deleting an existing edge between two agent nodes
 
         Return:
             agent_graph.edge_ids: edge_ids for agent edges to be deleted
     '''
     upper_triangular = _sparse_upper_triangular(agent_graph.adj())
-    mask_edges = torch.rand(upper_triangular.val.size()[0]) < del_prob # * triu_adj.val TODO: Is this needed?
+    mask_edges = torch.rand(upper_triangular.val.size()[0]) < deletion_prob # * triu_adj.val TODO: Is this needed?
     deletion_matrix_upper_tri = _sparse_matrix_apply_mask(upper_triangular, mask_edges)
     deletion_matrix = _symmetrical_from_upper_triangular(deletion_matrix_upper_tri)
 

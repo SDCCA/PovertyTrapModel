@@ -3,7 +3,7 @@ initial_graph_type: barabasi-albert
 step_count: 0
 step_target: 20
 steering_parameters:
-  del_prob: 0.05
+  deletion_prob: 0.05
   edata:
   - all
   epath: ./edge_data
@@ -64,7 +64,7 @@ cost_vals:
 gamma_vals:
 - 0.3
 - 0.45
-lam_dist:
+lambda_dist:
   decimals: 1
   parameters:
   - 0.1
@@ -78,7 +78,6 @@ sigma_dist:
   - 1.9
   round:  true
   decimals: 1
-
 tec_dist:
   decimals: null
   parameters:
@@ -86,7 +85,7 @@ tec_dist:
   - null
   round: false
   type: bernoulli
-tec_levels:
+technology_levels:
 - 0
 - 1
 m_theta_dist:

@@ -73,7 +73,7 @@ class PovertyTrapModel(Model):
     'tec_dist': {'type':'bernoulli','parameters':[0.5,None],'round':False,'decimals':None}, 
     'capital_dist': {'type':'uniform','parameters':[0.1,10.],'round':False,'decimals':None}, 
     'alpha_dist': {'type':'normal','parameters':[1.08,0.074],'round':False,'decimals':None},
-    'lam_dist': {'type':'uniform','parameters':[0.1,0.9],'round':True,'decimals':1},
+    'lambda_dist': {'type':'uniform','parameters':[0.1,0.9],'round':True,'decimals':1},
     'initial_graph_type': 'barabasi-albert',
     'step_count':0,
     'step_target':20,
@@ -125,7 +125,7 @@ class PovertyTrapModel(Model):
             self.sensitivity_dist = None
             self.capital_dist = None
             self.alpha_dist = None
-            self.lam_dist = None 
+            self.lambda_dist = None 
             self.initial_graph_type = None
             self.model_graph = None
             self.step_count = None
@@ -218,6 +218,7 @@ class PovertyTrapModel(Model):
         agentsAdaptTable = self._initialize_agents_adapttable()
         agentsTecLevel, agentsGamma, agentsCost = self._initialize_agents_tec()
 
+        # TODO: add comment explaining what each variable is (here? where?).
         if isinstance(self.model_graph,dgl.DGLGraph):
             self.model_graph.ndata['wealth'] = agentsCapital
             self.model_graph.ndata['alpha'] = agentsAlpha
@@ -225,7 +226,7 @@ class PovertyTrapModel(Model):
             self.model_graph.ndata['sensitivity'] = agentsSensitivity
             self.model_graph.ndata['lambda'] = agentsLam
             self.model_graph.ndata['sigma'] = agentsSigma
-            self.model_graph.ndata['tec'] = agentsTecLevel
+            self.model_graph.ndata['technology_level'] = agentsTecLevel
             self.model_graph.ndata['gamma'] = agentsGamma
             self.model_graph.ndata['cost'] = agentsCost
             self.model_graph.ndata['a_table'] = agentsAdaptTable
@@ -277,7 +278,7 @@ class PovertyTrapModel(Model):
         """
         Initialize agents lambda as a 1d tensor sampled from the specified intial lambda distribution
         """
-        agentsLam = sample_distribution_tensor(self.lam_dist['type'],self.lam_dist['parameters'],self.number_agents,round=self.lam_dist['round'],decimals=self.lam_dist['decimals'])
+        agentsLam = sample_distribution_tensor(self.lambda_dist['type'],self.lambda_dist['parameters'],self.number_agents,round=self.lambda_dist['round'],decimals=self.lambda_dist['decimals'])
         return agentsLam
 
     def _initialize_agents_sigma(self):
@@ -290,13 +291,13 @@ class PovertyTrapModel(Model):
     def _initialize_agents_tec(self):
         """
         Initialize the agents technology level distribution as 1d tensor sampled from the specified intial technology level distribution.
-        Initialize agents gamma and cost distributions according to their tec level and the spefied initial gamma and cost
+        Initialize agents gamma and cost distributions according to their technology level and the spefied initial gamma and cost
         values associated with that tech level
         """
-        agentsTecLevel = sample_distribution_tensor(self.tec_dist['type'],self.tec_dist['parameters'],self.number_agents,round=self.tec_dist['round'],decimals=self.tec_dist['decimals'])
+        agentsTecLevel = sample_distribution_tensor(self.technology_dist['type'],self.technology_dist['parameters'],self.number_agents,round=self.technology_dist['round'],decimals=self.technology_dist['decimals'])
         agentsGamma = torch.zeros(self.number_agents)
         agentsCost = torch.zeros(self.number_agents)
-        for i in range(len(self.tec_levels)):
+        for i in range(len(self.technology_levels)):
             tec_mask = agentsTecLevel == i
             agentsGamma[tec_mask] = self.gamma_vals[i]
             agentsCost[tec_mask] = self.cost_vals[i]   

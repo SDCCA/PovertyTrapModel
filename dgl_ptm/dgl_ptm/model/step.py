@@ -31,7 +31,7 @@ def ptm_step(agent_graph, timestep, params):
     
     #Link/edge manipulation
     local_attachment(agent_graph, n_FoF_links = 1, edge_prop = 'weight', p_attach=1.  )
-    link_deletion(agent_graph, del_prob = params['del_prob'])
+    link_deletion(agent_graph, deletion_prob = params['deletion_prob'])
     global_attachment(agent_graph, ratio = params['ratio'])
     
     #Update agent states
@@ -40,7 +40,7 @@ def ptm_step(agent_graph, timestep, params):
     agent_update(agent_graph, params, method ='income')
 
     #Weight update
-    weight_update(agent_graph, a = params['weight_a'], b = params['weight_b'],truncation_weight = params['truncation_weight'])
+    weight_update(agent_graph, a = params['homophily_parameter'], b = params['characteristic_distance'],truncation_weight = params['truncation_weight'])
 
     #Data collection and storage
     data_collection(agent_graph, timestep = timestep, npath = params['npath'], epath = params['epath'], ndata = params['ndata'], 
