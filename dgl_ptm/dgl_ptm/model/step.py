@@ -23,6 +23,8 @@ def ptm_step(agent_graph, timestep, params):
         Output:
             agent_graph: Updated agent_graph after one step of functional manipulation
     '''
+    if timestep!=0:
+        agent_update(agent_graph, params, timestep, method = 'capital')
 
     #Wealth transfer
     trade_money(agent_graph, method = params['wealth_method'])
@@ -33,10 +35,12 @@ def ptm_step(agent_graph, timestep, params):
     global_attachment(agent_graph, ratio = params['ratio'])
     
     #Update agent states
-    agent_update(agent_graph)
+    agent_update(agent_graph, params, timestep, method ='theta')
+    agent_update(agent_graph, params, method ='consumption')
+    agent_update(agent_graph, params, method ='income')
 
     #Weight update
-    weight_update(agent_graph, a = params['homophily_parameter'], b = params['characteristic_distance'],truncation_weight = params['truncation_weight'])
+    weight_update(agent_graph, homophily_parameter = params['homophily_parameter'], characteristic_distance = params['characteristic_distance'],truncation_weight = params['truncation_weight'])
 
     #Data collection and storage
     data_collection(agent_graph, timestep = timestep, npath = params['npath'], epath = params['epath'], ndata = params['ndata'], 

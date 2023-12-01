@@ -12,9 +12,38 @@ steering_parameters:
   - all
   npath: ./agent_data.zarr
   ratio: 0.1
-  wealth_method: weighted_transfer
-  homophily_parameter: 0.69
-  characteristic_distance: 35
+  wealth_method: singular_transfer
+  income_method: income_generation
+  consume_method: fitted_consumption
+  adapt_m:  
+    - 0.
+    - 0.5
+    - 0.9
+  adapt_cost:
+    - 0.
+    - 0.25
+    - 0.45
+  depreciation: 0.6
+  discount: 0.95
+  m_theta_dist': 
+    type: multinomial
+    parameters:
+    - [0.02 ,0.03, 0.05, 0.9]
+    - [0.7, 0.8, 0.9, 1]
+    round:  False
+    decimals: None
+  weight_a: 0.69
+  weight_b: 35
+  tech_gamma: 
+    - 0.3
+    - 0.35
+    - 0.45
+  tech_cost:  
+    - 0.
+    - 0.15
+    - 0.65
+  truncation_weight:  1.0e-10
+  step_type: custom
 alpha_dist:
   decimals: null
   parameters:
@@ -42,8 +71,14 @@ lambda_dist:
   - 0.9
   round: true
   type: uniform
-sigma: 0.5
-technology_dist:
+sigma_dist: 
+  type: uniform
+  parameters:
+  - 0.1
+  - 1.9
+  round:  true
+  decimals: 1
+tec_dist:
   decimals: null
   parameters:
   - 0.5
@@ -53,3 +88,35 @@ technology_dist:
 technology_levels:
 - 0
 - 1
+m_theta_dist:
+  decimals: null
+  parameters:
+    - [0.01 ,0.1, 0.79, 0.1]
+    - [0.1, 0.5, 0.8, 1]
+  round: false
+  type: multinomial
+a_theta_dist:
+  decimals: null
+  parameters:
+    - 0.1
+    - 1
+  round: false
+  type: uniform
+sensitivity_dist:
+  decimals: null
+  parameters:
+    - 0.
+    - 1
+  round: false
+  type: uniform
+adapt_m: 
+  - 0.
+  - 0.5
+  - 0.9
+adapt_cost:
+  - 0
+  - 0.25
+  - 0.45
+depreciation: 0.6
+discount: 0.95
+
