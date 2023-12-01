@@ -40,7 +40,7 @@ def ptm_step(agent_graph, timestep, params):
     agent_update(agent_graph, params, method ='income')
 
     #Weight update
-    weight_update(agent_graph, a = params['homophily_parameter'], b = params['characteristic_distance'],truncation_weight = params['truncation_weight'])
+    weight_update(agent_graph, homophily_parameter = params['homophily_parameter'], characteristic_distance = params['characteristic_distance'],truncation_weight = params['truncation_weight'])
 
     #Data collection and storage
     data_collection(agent_graph, timestep = timestep, npath = params['npath'], epath = params['epath'], ndata = params['ndata'], 

@@ -96,9 +96,10 @@ class PovertyTrapModel(Model):
                             'm_theta_dist': {'type':'multinomial','parameters':[[0.02 ,0.03, 0.05, 0.9],[0.7, 0.8, 0.9, 1]],'round':False,'decimals':None},
                             'del_prob':0.05,
                             'ratio':0.1,
-                            'weight_a':0.69,
-                            'weight_b':35, 
-                            'truncation_weight':1.0e-10,}}
+                            'homophily_parameter':0.69,
+                            'characteristic_distance':35, 
+                            'truncation_weight':1.0e-10,},
+        'model_data':{}}
 
     def __init__(self,*, model_identifier=None, restart=False, savestate=None):
         """
@@ -131,6 +132,7 @@ class PovertyTrapModel(Model):
             self.step_count = None
             self.step_target = None
             self.steering_parameters = None
+            self.model_data  = None
 
     def set_model_parameters(self,*,parameterFilePath=None, default=True, **kwargs):
         """
@@ -181,7 +183,7 @@ class PovertyTrapModel(Model):
         self.create_network()
         self.initialize_agent_properties()
         self.initialize_model_properties()
-        weight_update(self.model_graph, self.steering_parameters['weight_a'], self.steering_parameters['weight_b'], self.steering_parameters['truncation_weight'])
+        weight_update(self.model_graph, self.steering_parameters['homophily_parameter'], self.steering_parameters['characteristic_distance'], self.steering_parameters['truncation_weight'])
 
     def create_network(self):
         """
@@ -197,7 +199,7 @@ class PovertyTrapModel(Model):
         Values are initialized as tensors of length corresponding to number of time steps.
         """
         modelTheta = self._initialize_model_theta()
-        self.steering_parameters['modelTheta'] = modelTheta
+        self.model_data['modelTheta'] = modelTheta
 
     def _initialize_model_theta(self):
         modelTheta = sample_distribution_tensor(self.steering_parameters['m_theta_dist']['type'],self.steering_parameters['m_theta_dist']['parameters'],self.step_target,round=self.steering_parameters['m_theta_dist']['round'],decimals=self.steering_parameters['m_theta_dist']['decimals'])
