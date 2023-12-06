@@ -169,6 +169,8 @@ class PovertyTrapModel(Model):
                 for modelpar in modelpars:
                     if modelpar not in ['_model_identifier','model_graph']:
                         self.__dict__[modelpar] = self.default_model_parameters[modelpar]
+                self.steering_parameters['npath'] = './'+self._model_identifier+'/agent_data.zarr'
+                self.steering_parameters['epath'] = './'+self._model_identifier+'/edge_data'
             else:
                 if kwargs:  
                     kwpars = kwargs.keys()
