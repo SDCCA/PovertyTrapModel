@@ -4,7 +4,7 @@ import os
 import dgl
 from os.path import exists
 
-def data_collection(agent_graph, timestep, npath='./agent_data', epath='./edge_data', ndata = ['all'], edata = ['all'], mode = 'xarray'):
+def data_collection(agent_graph, timestep, npath='./agent_data', epath='./edge_data', ndata = ['all'], edata = ['all'], format = 'xarray', mode = 'w-'):
     ''' 
         data_collection - collects data from agents and edges for each time-step of the model
 
@@ -23,27 +23,28 @@ def data_collection(agent_graph, timestep, npath='./agent_data', epath='./edge_d
         Output:
 
     '''
+    
     if ndata == ['all']:
-        ndata = list(agent_graph.node_attr_schemes().keys())
+        ndata = list(agent_graph.node_attr_schemes().keys())    
     if ndata[0] == 'all_except':
         ndata = list(agent_graph.node_attr_schemes().keys() - ndata[1])
     if edata == ['all']:
         edata = list(agent_graph.edge_attr_schemes().keys())
 
-    _node_property_collector(agent_graph, npath, ndata, timestep, mode)
-    _edge_property_collector(agent_graph, epath, edata, timestep, mode)
+    _node_property_collector(agent_graph, npath, ndata, timestep, format, mode)
+    _edge_property_collector(agent_graph, epath, edata, timestep, format, mode)
 
 
-def _node_property_collector(agent_graph, npath, ndata, timestep, mode):
+def _node_property_collector(agent_graph, npath, ndata, timestep, format, mode):
     if os.environ["DGLBACKEND"] == "pytorch":
-        if mode == 'xarray':
+        if format == 'xarray':
             agent_data_instance = xr.Dataset()
             for prop in ndata:
                 _check_nprop_in_graph(agent_graph, prop)
                 agent_data_instance = agent_data_instance.assign(prop=(['n_agents','n_time'], agent_graph.ndata[prop][:,None].numpy()))
                 agent_data_instance = agent_data_instance.rename(name_dict={'prop':prop})
             if timestep == 0:
-                agent_data_instance.to_zarr(npath, mode = 'w')
+                agent_data_instance.to_zarr(npath, mode = mode)
             else:
                 agent_data_instance.to_zarr(npath, append_dim='n_time')
         else:
@@ -52,9 +53,9 @@ def _node_property_collector(agent_graph, npath, ndata, timestep, mode):
         raise NotImplementedError("Data collection currently only implemented for pytorch backend")
         
 
-def _edge_property_collector(agent_graph, epath, edata, timestep, mode): 
+def _edge_property_collector(agent_graph, epath, edata, timestep, format, mode): 
     if os.environ["DGLBACKEND"] == "pytorch":
-        if mode == 'xarray':
+        if format == 'xarray':
             edge_data_instance = xr.Dataset(coords=dict(
                                             source=(["n_edges"], agent_graph.edges()[0]),
                                             dest=(["n_edges"], agent_graph.edges()[1]),
@@ -63,7 +64,7 @@ def _edge_property_collector(agent_graph, epath, edata, timestep, mode):
                 _check_eprop_in_graph(agent_graph, prop)
                 edge_data_instance = edge_data_instance.assign(property=(['n_edges','time'], agent_graph.edata[prop][:,None].numpy()))
                 edge_data_instance = edge_data_instance.rename_vars(name_dict={'property':prop})
-            edge_data_instance.to_zarr(Path(epath)/(str(timestep)+'.zarr'), mode = 'w')
+            edge_data_instance.to_zarr(Path(epath)/(str(timestep)+'.zarr'), mode = mode)
         else:
             raise NotImplementedError("Only 'xarray' mode currrent available")
     else:

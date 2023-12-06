@@ -67,21 +67,23 @@ class PovertyTrapModel(Model):
     'gamma_vals':torch.tensor([0.3,0.45]) , #for pseudo income
     'sigma_dist': {'type':'uniform','parameters':[0.1,1.9],'round':True,'decimals':1},
     'cost_vals': torch.tensor([0.,0.45]), #for pseudo income
-    'tec_levels': torch.tensor([0,1]), #check if deletable
+    'technology_levels': torch.tensor([0,1]), #check if deletable
     'a_theta_dist': {'type':'uniform','parameters':[0.1,1],'round':False,'decimals':None},
     'sensitivity_dist':{'type':'uniform','parameters':[0.0,1],'round':False,'decimals':None},
-    'tec_dist': {'type':'bernoulli','parameters':[0.5,None],'round':False,'decimals':None}, 
+    'technology_dist': {'type':'bernoulli','parameters':[0.5,None],'round':False,'decimals':None}, 
     'capital_dist': {'type':'uniform','parameters':[0.1,10.],'round':False,'decimals':None}, 
     'alpha_dist': {'type':'normal','parameters':[1.08,0.074],'round':False,'decimals':None},
     'lambda_dist': {'type':'uniform','parameters':[0.1,0.9],'round':True,'decimals':1},
     'initial_graph_type': 'barabasi-albert',
     'step_count':0,
     'step_target':20,
+    'model_data':{},
     'steering_parameters':{'npath':'./agent_data.zarr',
                             'epath':'./edge_data', 
                             'ndata':['all_except',['a_table']],
                             'edata':['all'],
-                            'mode':'xarray',
+                            'format':'xarray',
+                            'mode':'w-',
                             'wealth_method':'singular_transfer',
                             'income_method':'default',
                             'capital_update_method':'default',
@@ -94,12 +96,12 @@ class PovertyTrapModel(Model):
                             'depreciation': 0.6,
                             'discount': 0.95,
                             'm_theta_dist': {'type':'multinomial','parameters':[[0.02 ,0.03, 0.05, 0.9],[0.7, 0.8, 0.9, 1]],'round':False,'decimals':None},
-                            'del_prob':0.05,
+                            'deletion_prob':0.05,
                             'ratio':0.1,
                             'homophily_parameter':0.69,
                             'characteristic_distance':35, 
-                            'truncation_weight':1.0e-10,},
-        'model_data':{}}
+                            'truncation_weight':1.0e-10,}
+    }
 
     def __init__(self,*, model_identifier=None, restart=False, savestate=None):
         """
@@ -120,8 +122,8 @@ class PovertyTrapModel(Model):
             self.gamma_vals = None
             self.sigma_dist = None
             self.cost_vals = None
-            self.tec_levels = None
-            self.tec_dist = None
+            self.technology_levels = None
+            self.technology_dist = None
             self.a_theta_dist = None
             self.sensitivity_dist = None
             self.capital_dist = None
@@ -153,10 +155,16 @@ class PovertyTrapModel(Model):
                     raise SyntaxError(exc)
                 
             for modelpar in modelpars:
-                if modelpar not in ['_model_identifier','model_graph']:
+                if modelpar not in ['_model_identifier','model_graph','steering_parameters']:
                     if type(self.__dict__[modelpar]) is list:
                         self.__dict__[modelpar] = torch.tensor(self.__dict__[modelpar])
-        else:
+                elif modelpar in ['steering_parameters']:
+                    for params in self.steering_parameters.keys():
+                        if type(self.steering_parameters[params]) is list:
+                            if type(self.steering_parameters[params][0]) is not str:
+                                self.steering_parameters[params] = torch.tensor(self.steering_parameters[params])
+
+        else:   
             if default:
                 for modelpar in modelpars:
                     if modelpar not in ['_model_identifier','model_graph']:
@@ -300,14 +308,14 @@ class PovertyTrapModel(Model):
         agentsGamma = torch.zeros(self.number_agents)
         agentsCost = torch.zeros(self.number_agents)
         for i in range(len(self.technology_levels)):
-            tec_mask = agentsTecLevel == i
-            agentsGamma[tec_mask] = self.gamma_vals[i]
-            agentsCost[tec_mask] = self.cost_vals[i]   
+            technology_mask = agentsTecLevel == i
+            agentsGamma[technology_mask] = self.gamma_vals[i]
+            agentsCost[technology_mask] = self.cost_vals[i]   
         return agentsTecLevel, agentsGamma, agentsCost
 
     def step(self):
         try:
-            ptm_step(self.model_graph,self.step_count,self.steering_parameters)
+            ptm_step(self.model_graph,self.model_data,self.step_count,self.steering_parameters)
             self.step_count +=1
         except:
             #TODO add model dump here. Also check against previous save to avoid overwriting
