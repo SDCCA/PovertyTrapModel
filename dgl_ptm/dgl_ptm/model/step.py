@@ -23,7 +23,7 @@ def ptm_step(agent_graph, model_data, timestep, params):
         Output:
             agent_graph: Updated agent_graph after one step of functional manipulation
     '''
-    if timestep!=0:
+    if timestep!=1:
         agent_update(agent_graph, params, model_data, timestep, method = 'capital')
 
     #Wealth transfer

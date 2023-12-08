@@ -6,6 +6,7 @@ import yaml
 from dgl_ptm.network.network_creation import network_creation
 from dgl_ptm.model.step import ptm_step
 from dgl_ptm.agentInteraction.weight_update import weight_update
+from dgl_ptm.model.data_collection import data_collection
 
 
 def sample_distribution_tensor(type, distParameters, nSamples, round=False, decimals=None):
@@ -194,6 +195,8 @@ class PovertyTrapModel(Model):
         self.initialize_agent_properties()
         self.initialize_model_properties()
         weight_update(self.model_graph, self.steering_parameters['homophily_parameter'], self.steering_parameters['characteristic_distance'], self.steering_parameters['truncation_weight'])
+        data_collection(self.model_graph, timestep = 0, npath = self.steering_parameters['npath'], epath = self.steering_parameters['epath'], ndata = self.steering_parameters['ndata'], 
+                    edata = self.steering_parameters['edata'], format = self.steering_parameters['format'], mode = self.steering_parameters['mode'])
 
     def create_network(self):
         """
@@ -317,8 +320,8 @@ class PovertyTrapModel(Model):
 
     def step(self):
         try:
-            ptm_step(self.model_graph,self.model_data,self.step_count,self.steering_parameters)
             self.step_count +=1
+            ptm_step(self.model_graph,self.model_data,self.step_count,self.steering_parameters)
         except:
             #TODO add model dump here. Also check against previous save to avoid overwriting
 
