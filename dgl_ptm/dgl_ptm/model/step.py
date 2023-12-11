@@ -11,7 +11,7 @@ from dgl_ptm.agent.agent_update import agent_update
 from dgl_ptm.model.data_collection import data_collection
 from dgl_ptm.agentInteraction.weight_update import weight_update
 
-def ptm_step(agent_graph, timestep, params):
+def ptm_step(agent_graph, model_data, timestep, params):
     '''
         step - time-stepping module for the poverty-trap model
 
@@ -23,8 +23,8 @@ def ptm_step(agent_graph, timestep, params):
         Output:
             agent_graph: Updated agent_graph after one step of functional manipulation
     '''
-    if timestep!=0:
-        agent_update(agent_graph, params, timestep, method = 'capital')
+    if timestep!=1:
+        agent_update(agent_graph, params, model_data, timestep, method = 'capital')
 
     #Wealth transfer
     trade_money(agent_graph, method = params['wealth_method'])
@@ -35,7 +35,7 @@ def ptm_step(agent_graph, timestep, params):
     global_attachment(agent_graph, ratio = params['ratio'])
     
     #Update agent states
-    agent_update(agent_graph, params, timestep, method ='theta')
+    agent_update(agent_graph, params, model_data, timestep, method ='theta')
     agent_update(agent_graph, params, method ='consumption')
     agent_update(agent_graph, params, method ='income')
 
@@ -44,5 +44,5 @@ def ptm_step(agent_graph, timestep, params):
 
     #Data collection and storage
     data_collection(agent_graph, timestep = timestep, npath = params['npath'], epath = params['epath'], ndata = params['ndata'], 
-                    edata = params['edata'], mode = params['mode'])
+                    edata = params['edata'], format = params['format'], mode = params['mode'])
     
