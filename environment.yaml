@@ -10,3 +10,4 @@ dependencies:
   - pytorch::torchaudio==2.0.0
   - dglteam::dgl
   - xarray
+  - zarr

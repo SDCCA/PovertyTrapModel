@@ -26,8 +26,8 @@ def trade_money(agent_graph, method: str):
     TODO: Rename variables as per Thijs' updates on notebook
     """
     # Calculating disposable wealth
-    agent_graph.ndata['disp_wealth'] = agent_graph.ndata['lambda']*agent_graph.ndata['wealth']
-
+    agent_graph.ndata['disposable_wealth'] = agent_graph.ndata['lambda']*agent_graph.ndata['wealth'] # TODO: declare what lambda is
+    
     # Transfer of wealth
     if method == 'weighted_transfer':
         _weighted_transfer(agent_graph)
@@ -44,17 +44,17 @@ def _weighted_transfer(agent_graph):
     """
 
     # Sum all incoming weights
-    agent_graph.ndata['tot_wgt'] = torch.zeros(agent_graph.num_nodes(),1)
-    agent_graph.update_all(fn.u_add_e('tot_wgt','w','tot_wgt'), fn.sum('tot_wgt', 'tot_wgt'))
+    agent_graph.ndata['total_weight'] = torch.zeros(agent_graph.num_nodes())
+    agent_graph.update_all(fn.u_add_e('total_weight','weight','total_weight_msg'), fn.sum('total_weight_msg', 'total_weight'))
 
     # Calculating outgoing weight %s
-    agent_graph.apply_edges(fn.e_div_u('w','tot_wgt','per_wgt'))
+    agent_graph.apply_edges(fn.e_div_u('weight','total_weight','percent_weight'))
 
     # Wealth transfer amount on each edge
-    agent_graph.apply_edges(fn.e_mul_u('per_wgt','disp_wealth','trfr_wealth'))
+    agent_graph.apply_edges(fn.e_mul_u('percent_weight','disposable_wealth','trfr_wealth'))  # TODO: check what trfr_wealth actually is
 
     # Sum total income from wealth exchange
-    agent_graph.update_all(fn.v_add_e('zeros','trfr_wealth','net_trade'), fn.sum('net_trade', 'net_trade'))
+    agent_graph.update_all(fn.v_add_e('zeros','trfr_wealth','net_trade_msg'), fn.sum('net_trade_msg', 'net_trade'))
 
 def _singular_transfer(agent_graph):
     """
@@ -66,8 +66,8 @@ def _singular_transfer(agent_graph):
     graph_subset = dgl.sampling.sample_neighbors(agent_graph, agent_graph.nodes(), 1, edge_dir='out', copy_ndata = True)
     
     # Calculate incoming wealth for each agent in subgraph
-    graph_subset.ndata['net_trade'] = torch.zeros(agent_graph.num_nodes(),1)
-    graph_subset.update_all(fn.u_add_v('disp_wealth','zeros','net_trade'), fn.sum('net_trade', 'net_trade'))
+    graph_subset.ndata['net_trade'] = torch.zeros(agent_graph.num_nodes())
+    graph_subset.update_all(fn.u_add_v('disposable_wealth','zeros','net_trade_msg'), fn.sum('net_trade_msg', 'net_trade'))
 
     # Update wealth delta in agent graph
     agent_graph.ndata['net_trade'] = graph_subset.ndata['net_trade']

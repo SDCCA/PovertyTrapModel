@@ -13,7 +13,7 @@ def local_attachment(graph,n_FoF_links,edge_prop=None,p_attach=1.):
         for i in range(len(src_ids)):
             FoF_to_link = select_FoF_attachment(src_ids[i],dst_ids[i],graph,edgeprop=edge_prop)
             if FoF_to_link != None:
-                create_FoF_link (src_ids(i),FoF_to_link,graph,p_attach=p_attach)
+                create_FoF_link (src_ids[i],FoF_to_link,graph,p_attach=p_attach)
                 created_links +=1
             else:
                 print(f"no FoF link possible for src dst nodes {src_ids[i]} and {dst_ids[i]}.")
@@ -31,10 +31,10 @@ def select_edges(graph,n_FoF_links,edge_prop):
 
 
 def graph_norm_edge_prop(graph,edgeprop):
-    if graph.is_homogenous:
+    if graph.is_homogeneous:
         return graph.edata[edgeprop]/graph.edata[edgeprop].sum()
     else:
-        raise RuntimeError('only homogenous graphs are currenlty supported')
+        raise RuntimeError('only homogenous graphs are currently supported')
 
 def FoF_nodes(srcid,dstid,graph):
     """
@@ -60,9 +60,9 @@ def select_FoF_attachment(srcid,dstid,graph,edgeprop=None):
     selected_FoF=None
     possible_FoF_nodes = FoF_nodes(srcid,dstid,graph)
     if possible_FoF_nodes.numel() !=0:
-        already_connected = existing_connections(srcid,possible_FoF_nodes)
+        already_connected = existing_connections(srcid,possible_FoF_nodes,graph)
         if torch.all(already_connected):
-            print(f'all FoF nodes are already irecdctly connected to node {srcid}.')
+            print(f'all FoF nodes are already direcctly connected to node {srcid}.')
         else:
             possible_FoF_to_link = possible_FoF_nodes[already_connected==False]
             dst_F_link_ids = graph.edge_ids(torch.ones_like(possible_FoF_to_link,dtype=int)*dstid,possible_FoF_to_link)
