@@ -63,10 +63,10 @@ def _singular_transfer(agent_graph):
     """
 
     # Subsample graph to one random edge per node
-    graph_subset = dgl.sampling.sample_neighbors(agent_graph, agent_graph.nodes(), 1, edge_dir='out', copy_ndata = True)
+    graph_subset = dgl.sampling.sample_neighbors(agent_graph, agent_graph.nodes(), 1, edge_dir='out', copy_ndata = True, output_device = 'cuda')
     
     # Calculate incoming wealth for each agent in subgraph
-    graph_subset.ndata['net_trade'] = torch.zeros(agent_graph.num_nodes())
+    graph_subset.ndata['net_trade'] = torch.zeros(agent_graph.num_nodes()).to('cuda')
     graph_subset.update_all(fn.u_add_v('disposable_wealth','zeros','net_trade_msg'), fn.sum('net_trade_msg', 'net_trade'))
 
     # Update wealth delta in agent graph

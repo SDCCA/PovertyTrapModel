@@ -22,4 +22,5 @@ def global_attachment(agent_graph, ratio: float):
     agent_graph = AddReverse()(agent_graph)
 
     # Remove duplicate edges
-    agent_graph = dgl.to_simple(agent_graph, return_counts='cnt')
+    agent_graph = dgl.to_simple(agent_graph.to('cpu'), return_counts='cnt')
+    agent_graph = agent_graph.to('cuda')

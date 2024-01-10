@@ -13,7 +13,7 @@ def weight_update(agent_graph, homophily_parameter, characteristic_distance, tru
 
     weights falling below the numerical truncation value will be set at that value
     """
-    agent_graph.edata['weight'] = torch.rand(agent_graph.num_edges(),1)
+    agent_graph.edata['weight'] = torch.rand(agent_graph.num_edges(),1).to('cuda')
     agent_graph.apply_edges(fn.u_sub_v('wealth','wealth','wealth_diff'))
     weights = 1./(1. + torch.exp(homophily_parameter*(torch.abs(agent_graph.edata['wealth_diff'])-characteristic_distance)))
     finiteweights = torch.isfinite(weights)

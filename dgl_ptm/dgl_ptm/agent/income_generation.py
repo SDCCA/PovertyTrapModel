@@ -11,7 +11,7 @@ def income_generation(model_graph, params=None, method='default'):
     
 
 def _agent_income_generator(model_graph, params):
-    gamma = params['tech_gamma']
-    cost = params['tech_cost']
+    gamma = params['tech_gamma'].to('cuda')
+    cost = params['tech_cost'].to('cuda')
     model_graph.ndata['income'],model_graph.ndata['tech_index'] = torch.max((model_graph.ndata['alpha'][:,None]*model_graph.ndata['wealth'][:,None]**gamma - cost), axis=1)
     # TODO: declare variable alpha somewhere   
