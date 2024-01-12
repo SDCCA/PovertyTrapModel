@@ -8,7 +8,7 @@ os.environ["DGLBACKEND"] = "pytorch"
 if not torch.cuda.is_available():
     raise SystemError('GPU access not available with PyTorch') 
 
-nagents = [5000000]
+nagents = [50000]
 runtime = []
 for i in nagents:
     start = time.time()
