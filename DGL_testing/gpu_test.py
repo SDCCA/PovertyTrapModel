@@ -8,7 +8,7 @@ os.environ["DGLBACKEND"] = "pytorch"
 if not torch.cuda.is_available():
     raise SystemError('GPU access not available with PyTorch') 
 
-nagents = [100, 1000, 10000, 100000, 1000000]
+nagents = [5000000]
 runtime = []
 for i in nagents:
     start = time.time()
@@ -20,6 +20,7 @@ for i in nagents:
     model.set_model_parameters(default=True)
     model.number_agents = i
     model.step_target = 100
+    model.steering_parameters['mode'] = 'w'
     # OR
     # using a CONFIG file
     # model.set_model_parameters(default=True, parameterFilePath='../dgl_ptm/dgl_ptm/config.yaml')
